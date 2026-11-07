@@ -2,7 +2,7 @@
 
 > **Bill anything. Sell anything. Run everything.**
 
-**Look and feel:** calm, precise, trustworthy, like a good bank app crossed with a fast POS. Clean surfaces, one confident accent colour, strong typography, and numbers that line up. **No** gradients, glows, glassmorphism, emoji in UI copy or stock icons as the logo.
+**Look and feel:** confident, premium and unmistakable. Deep navy foundations, a royal-blue core, and a single flash of **Energy Orange** where money happens. The look should stick in memory: shops should recognise Anylo across the room. Clean surfaces, strong typography, numbers that line up. **No** gradients, glows, glassmorphism, emoji in UI copy, or stock icons as the logo.
 
 ## 1. Brand
 
@@ -10,54 +10,84 @@
 |---|---|
 | Name | **Anylo** (always capital A, rest lowercase) |
 | Motto | *Bill anything. Sell anything. Run everything.* Used on the landing hero, login, splash and the receipt footer option |
-| Logo | Wordmark "anylo" in a geometric sans, lowercase. The symbol is a rounded square containing an abstract **"A" formed by a rising bar-chart stroke** (sales going up). One colour. Works at 16 px. Deliverables: SVG mark, wordmark, lockup, app icons (Android adaptive + monochrome, iOS), favicon, PWA maskable |
-| Voice | Plain, warm, direct. "Bill saved" not "Transaction completed successfully". Say "you", avoid jargon, and explain GST terms inline the first time they appear |
+| Logo | Wordmark "anylo" in a geometric sans, lowercase, Deep Blue. The symbol is a rounded square in Royal Blue containing an abstract **"A" formed by a rising bar-chart stroke**, with the top bar in Energy Orange (sales going up). It also works single-colour at 16 px. Deliverables: SVG mark, wordmark, lockup, app icons (Android adaptive + monochrome, iOS), favicon, PWA maskable |
+| Signature moment | The **orange Pay / Save bill button** and the orange success tick. Orange appears almost nowhere else, so it always means "money is happening" |
+| Voice | Plain, warm, direct. "Bill saved", not "Transaction completed successfully". Say "you", avoid jargon, and explain GST terms inline the first time they appear |
 
-## 2. Colour tokens
+## 2. Colour
 
-Tokens are defined once in `design/tokens.json`. That file generates Tailwind config (web), `Color.kt` (Android) and the asset catalog (iOS). **Raw hex values in components are a lint error.**
+Tokens are defined once in `design/tokens.json`, which generates the Tailwind config (web), `Color.kt` (Android) and the asset catalog (iOS). **Raw hex values in components are a lint error.**
 
-### Brand ramp: "Anylo Indigo"
-| step | hex |
-|---|---|
-| 50 | `#EEF0FF` |
-| 100 | `#DDE1FF` |
-| 200 | `#BCC3FF` |
-| 300 | `#959FFB` |
-| 400 | `#6E78F2` |
-| **500** | **`#4F55E3`** (primary) |
-| 600 | `#3E41C8` |
-| 700 | `#3133A0` |
-| 800 | `#272A7D` |
-| 900 | `#1E2060` |
+### 2.1 Brand palette (the six source colours)
 
-### Semantic (light / dark)
+| Name | Hex | Role | Rules (contrast measured) |
+|---|---|---|---|
+| **Deep Blue** | `#031273` | Brand anchor: sidebar, POS total panel, landing hero, headings on light, logo wordmark | White on it 15.7:1 |
+| **Royal Blue** | `#0504AA` | **Primary** in light mode: buttons, links, active nav, focus, selected states | White on it 13.1:1 |
+| **Bright Indigo** | `#4F6BFF` | Primary family for dark mode, charts (series 1), illustrations, info badges | 4.3:1 on white, so never for small text on white; 4.5:1 on the dark bg |
+| **Energy Orange** | `#FF4800` | **Accent, used sparingly**: Pay / Save bill / Subscribe CTAs, success tick, the logo bar, "new" dots, the active goal ring | White text only at ≥ 18 px bold (3.4:1 = AA large); Deep Blue text 4.6:1 for small labels |
+| **Orange-Yellow** | `#F59E0B` | Highlight & caution: dues, "at risk" goals, low stock, trial banner | Never as text on white (2.2:1); Deep Blue text on it 7.3:1 |
+| **Sea White** | `#D7F2FA` | Cool tint: selected rows, info panels, empty-state backgrounds, hero sections, chips | Deep Blue on it 13.4:1; Royal on it 11.2:1 |
+
+**Why all six work together:** the blues do the structural work (60%), white, Sea White and neutrals carry content (35%), and the two oranges are rare signals (≤ 5%). Orange-Yellow never sits next to Energy Orange as a pair of fills. They have different jobs (caution vs action), so the screen never turns into a sunset.
+
+### 2.2 Ramps (generated, used for hovers/tints)
+
+| step | blue (Royal → Deep) | indigo | orange (Energy) | amber (Orange-Yellow) | sea |
+|---|---|---|---|---|---|
+| 50 | `#EEF0FF` | `#EEF1FF` | `#FFF1EB` | `#FFF8E6` | `#F2FBFD` |
+| 100 | `#DCE0FF` | `#DDE3FF` | `#FFDCCC` | `#FDECC2` | `#E6F7FC` |
+| 200 | `#B5BCF7` | `#BCC7FF` | `#FFB899` | `#FBD786` | `#D7F2FA` ★ |
+| 300 | `#7F86E6` | `#8FA0FF` | `#FF8F5C` | `#F8BD45` | `#B5E5F3` |
+| 400 | `#4048CC` | `#6F86FF` | `#FF6A2E` | `#F59E0B` ★ | `#86D2E8` |
+| 500 | `#0504AA` ★ | `#4F6BFF` ★ | `#FF4800` ★ | `#D98706` | `#55B8D6` |
+| 600 | `#05048F` | `#3D55E0` | `#DB3D00` | `#B45309` | `#2F98B8` |
+| 700 | `#041080` | `#3043B3` | `#B03100` | `#8C4207` | `#217793` |
+| 800 | `#031273` ★ | `#243386` | `#852500` | `#663005` | `#185A70` |
+| 900 | `#020A45` | `#18225A` | `#5C1A00` | `#402003` | `#0F3B4A` |
+
+★ = a source colour. Ramps are a starting point; final values are validated by the token contrast test in CI.
+
+### 2.3 Semantic tokens (light / dark)
+
 | token | light | dark | use |
 |---|---|---|---|
-| `bg` | `#F7F7F5` | `#0E0F12` | app canvas |
-| `surface` | `#FFFFFF` | `#16171C` | cards, sheets |
-| `surface-2` | `#F1F1EE` | `#1E2027` | inputs, table stripes |
-| `border` | `#E3E3DE` | `#2A2C35` | hairlines |
-| `border-strong` | `#CFCFC8` | `#3A3D48` | inputs |
-| `text` | `#15161A` | `#F2F2F4` | primary text |
-| `text-2` | `#53555E` | `#A7A9B3` | secondary |
-| `text-3` | `#80838C` | `#757884` | tertiary, placeholders (never for essential info) |
-| `primary` | brand-500 | brand-400 | actions, focus |
-| `primary-fg` | `#FFFFFF` | `#0E0F12` | text on primary |
-| `success` | `#16834F` | `#3CC489` | paid, achieved |
-| `warning` | `#B26A00` | `#F0A93B` | due, at risk |
-| `danger` | `#C42B2B` | `#F06A6A` | errors, delete, behind |
-| `info` | `#2563A8` | `#6FA8EC` | neutral notices |
+| `bg` | `#F5F7FC` | `#050A2E` | app canvas (dark is a Deep-Blue night, never grey) |
+| `surface` | `#FFFFFF` | `#0B1340` | cards, sheets |
+| `surface-2` | `#EEF2FA` | `#111B52` | inputs, table stripes |
+| `tint` | `#D7F2FA` (Sea White) | `#13235E` | selected rows, info panels |
+| `border` | `#DFE4F0` | `#1F2A66` | hairlines |
+| `border-strong` | `#C3CBDD` | `#2E3B80` | inputs |
+| `text` | `#0B1033` | `#EEF3FF` | primary text (17:1) |
+| `text-2` | `#4A5275` | `#A9B4DD` | secondary (≥ 7.6:1 / 8.7:1) |
+| `text-3` | `#7A82A3` | `#7381B5` | placeholders and hints only, never essential info |
+| `primary` | `#0504AA` Royal | `#7B90FF` | main actions, links, focus ring |
+| `primary-hover` | `#031273` Deep | `#8FA0FF` | |
+| `on-primary` | `#FFFFFF` | `#031273` | text on primary (13.1:1 / 5.4:1) |
+| `accent` | `#FF4800` Energy | `#FF6A2E` | Pay / Save / Subscribe, success tick |
+| `on-accent` | `#FFFFFF` (≥ 18 px bold) | `#FFFFFF` (≥ 18 px bold) | accent buttons are always large |
+| `highlight` | `#F59E0B` | `#F59E0B` | dues, at-risk, trial banner fill (text on it: `#031273`) |
+| `success` | `#0B7A54` | `#34D399` | paid, achieved, in stock |
+| `danger` | `#C8102E` | `#FF6B7D` | errors, delete, behind target (crimson, kept distinct from Energy Orange and always paired with an icon or text) |
+| `info` | `#4F6BFF` (icons/fills only) | `#8FA0FF` | neutral notices |
 
-### Domain colours (charts and badges only)
-| token | hex | use |
-|---|---|---|
-| `pay-cash` | `#16834F` | cash |
-| `pay-upi` | `#4F55E3` | UPI |
-| `pay-card` | `#7A4FD6` | card |
-| `pay-due` | `#B26A00` | due / credit |
+### 2.4 Domain colours (charts and badges only)
 
-The chart palette (categorical, colour-blind safe, max 8): brand-500, `#0F9D9A`, `#E07B39`, `#7A4FD6`, `#D64F7A`, `#5E8C31`, `#B8932E`, `#64748B`. Every pair is checked with the dataviz validator. Text contrast ≥ 4.5:1 is verified in both themes.
+| token | light | dark | use |
+|---|---|---|---|
+| `pay-cash` | `#0B7A54` | `#34D399` | cash |
+| `pay-upi` | `#0504AA` | `#8FA0FF` | UPI |
+| `pay-card` | `#4F6BFF` | `#BCC7FF` | card |
+| `pay-due` | `#F59E0B` | `#F59E0B` | due / credit |
+
+Chart palette (categorical, max 6, ordered): `#0504AA`, `#FF4800`, `#4F6BFF`, `#F59E0B`, `#55B8D6` (sea-500), `#031273`. Series 7+ fold into "Others" (`#C3CBDD`). Each adjacent pair is checked with the dataviz validator. Lines are 2 px with direct labels, so colour is never the only key.
+
+### 2.5 Signature compositions
+
+- **POS:** white catalogue, Sea-White selected tiles, and a **Deep Blue checkout panel** with a big white total and an **Energy Orange "Pay ₹1,240" button**. This is the most-seen screen and the one people remember.
+- **Dashboard hero:** a Deep Blue card with white KPI numbers, a Bright Indigo sparkline, and an Energy Orange goal ring.
+- **Landing / splash:** a Deep Blue field, the motto in white with "everything." in Energy Orange, and Sea-White product cards.
+- **Receipt (thermal):** monochrome by necessity; the brand appears only in the logo and the footer motto.
 
 ## 3. Typography
 
