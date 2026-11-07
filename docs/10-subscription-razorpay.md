@@ -5,13 +5,13 @@
 | Item | Value |
 |---|---|
 | Trial | 30 days from shop creation, all features, no card |
-| Price | **₹600 / shop / month** + 18% GST = **₹708 charged** (`plans.price` + `plans.gst_rate`; flip to GST-inclusive by changing data, not code) |
+| Price | **₹599 / shop / month, all-inclusive.** The customer pays exactly ₹599; 18% GST is inside it (intra-state: taxable ₹507.62 + CGST ₹45.69 + SGST ₹45.69; inter-state: taxable ₹507.63 + IGST ₹91.37, per `06-gst.md` §5 inclusive rule) |
 | Billing | Razorpay Subscriptions: UPI AutoPay mandate or card (recurring) |
 | Multi-shop | Each shop has its own subscription. The owner sees one billing page listing all shops |
 | Cancellation | Any time; stays active until the end of the paid period |
 | Refunds | None for partial months (stated in Terms) |
 
-> Open decision: confirm whether ₹600 is GST-inclusive. Annual plan (e.g. ₹6,000/yr) is a later add: one new `plans` row.
+> Decided 2026-11-08: ₹599 flat, GST-inclusive, and owners pay on the web only. Annual plan is a later add (one new `plans` row).
 
 ## 2. Lifecycle
 
@@ -56,7 +56,7 @@
 ## 3. Razorpay integration
 
 **Setup:**
-- One Razorpay Plan per `plans` row: period `monthly`, interval 1, amount 70800 paise.
+- One Razorpay Plan per `plans` row: period `monthly`, interval 1, amount **59900 paise**.
 - Its id is stored in `plans.razorpay_plan_id` (and `RAZORPAY_PLAN_ID` for bootstrap).
 
 **Subscribe flow (web only, owner):**

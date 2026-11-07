@@ -15,7 +15,7 @@ It is the successor to PlantBill (a nursery-only billing app) and rebuilds it fo
 | Android | Kotlin, Jetpack Compose, Hilt, Retrofit |
 | iOS | Swift, SwiftUI (planned) |
 
-**Pricing:** 30-day free trial, then ₹600 per shop per month (billed through Razorpay).
+**Pricing:** 30-day free trial, then **₹599 per shop per month, all-inclusive** (GST included, nothing more). Owners pay on the web via Razorpay.
 
 ## Repository layout
 

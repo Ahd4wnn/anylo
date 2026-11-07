@@ -57,7 +57,7 @@ PostgreSQL 16. Conventions:
 
 ## 2. Subscription (platform-owned; RLS: owner reads own shop rows)
 
-**plans**: `code ('standard_monthly'), name, price NUMERIC(12,2) (600.00), gst_rate (18), interval ('month'), razorpay_plan_id, is_active`.
+**plans**: `code ('standard_monthly'), name, price NUMERIC(12,2) (599.00, **GST-inclusive**), price_includes_tax bool (true), gst_rate (18), interval ('month'), razorpay_plan_id, is_active`.
 
 **subscriptions** (1 per shop)
 | column | notes |

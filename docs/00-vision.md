@@ -36,7 +36,7 @@ Owners may be non-technical and older. The UI uses plain language, big touch tar
 ## Pricing
 
 - **30-day free trial**, no card needed. All features unlocked.
-- Then **₹600 per shop per month** (plus GST on our invoice), auto-renewed through Razorpay (UPI AutoPay or card).
+- Then **₹599 per shop per month, all-inclusive**: GST is included and there are no hidden charges. It auto-renews through Razorpay (UPI AutoPay or card), and **owners pay on the web**.
 - If payment lapses: a grace period, then **read-only**. Data is never deleted for non-payment; owners can always see and export their records.
 
 ## Platforms

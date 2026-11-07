@@ -81,7 +81,7 @@ One React app in `web/`. It serves the marketing landing page, the POS, the shop
 **Landing (`/`)**
 - Hero: the motto, a one-line value prop and a product screenshot (a real UI capture, not an illustration).
 - Features in three columns matching the motto: Bill · Sell · Run.
-- Pricing card: "30 days free, then ₹600/shop/month + GST".
+- Pricing card: "30 days free, then ₹599/shop/month. That's it. GST included.".
 - FAQ, then footer.
 - Fast: static, < 100 KB JS (lazy-loads nothing from the app).
 
