@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from math import ceil
 from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Response
@@ -125,7 +126,9 @@ def me(actor: CurrentActor, db: DB) -> MeOut:
         ).first()
         if row:
             days = (
-                (row.trial_ends_at - datetime.now(UTC)).days if row.status == "trialing" else None
+                ceil((row.trial_ends_at - datetime.now(UTC)).total_seconds() / 86400)
+                if row.status == "trialing"
+                else None
             )
             sub = SubscriptionBrief(
                 status=row.status,

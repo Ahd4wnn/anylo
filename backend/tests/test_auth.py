@@ -51,7 +51,7 @@ def test_signup_creates_owner_shop_and_trial(client: TestClient) -> None:
     assert [s["name"] for s in me["shops"]] == ["Ravi Stores"]
     assert me["active_shop_id"] == me["shops"][0]["id"]
     assert me["subscription"]["status"] == "trialing"
-    assert me["subscription"]["days_left"] in (29, 30)
+    assert me["subscription"]["days_left"] == 30
     assert "ai.use" in me["permissions"]
 
 

@@ -1,86 +1,62 @@
-import { BarChart3, Eye, EyeOff, Receipt, Sparkles } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ApiError } from "@/api/client";
 import { Button } from "@/ui/Button";
 import { Field } from "@/ui/Field";
-import { Logo } from "@/ui/Logo";
+import { AuthShell, FormError } from "./AuthShell";
+import { useAuth } from "./store";
 
-const pillars = [
-  { icon: Receipt, title: "Bill anything", text: "GST invoices in seconds: scan, tap or speak." },
-  { icon: BarChart3, title: "Sell anything", text: "Any unit, any variant, stock that keeps itself right." },
-  { icon: Sparkles, title: "Run everything", text: "Profit, cash, staff and goals, plus an AI manager for owners." },
-];
+export function PasswordToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} className="grid h-10 w-10 place-items-center rounded-md text-text-2 hover:bg-surface-2" aria-label={show ? "Hide password" : "Show password"}>
+      {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+    </button>
+  );
+}
 
 export function LoginPage() {
+  const login = useAuth((s) => s.login);
+  const navigate = useNavigate();
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true); // wired to /v1/auth/login in M1
-    setTimeout(() => setBusy(false), 600);
+    const f = new FormData(e.currentTarget);
+    setBusy(true); setError(null);
+    try {
+      await login(String(f.get("login")).trim(), String(f.get("password")));
+      navigate("/app", { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
-    <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[1.05fr_1fr] lg:p-3">
-      {/* Brand panel */}
-      <aside className="relative overflow-hidden bg-tint px-6 pt-8 pb-10 sm:px-10 lg:flex lg:flex-col lg:justify-between lg:gap-10 lg:rounded-xl lg:p-14">
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-32 hidden h-96 w-96 rounded-full bg-primary-soft sm:block" />
-        <div className="relative"><Logo size={40} /></div>
-
-        <div className="relative mt-10 lg:mt-0">
-          <h1 className="text-4xl font-bold leading-[1.08] text-text sm:text-5xl lg:text-[56px]" style={{ letterSpacing: "-0.03em" }}>
-            Bill anything.<br />Sell anything.<br />Run <span className="text-brand">everything.</span>
-          </h1>
-          <p className="mt-5 max-w-md text-lg text-text-2">
-            The calm, clear way to run your shop: fast GST billing at the counter, and the whole business at a glance.
-          </p>
-          <ul className="mt-10 hidden space-y-5 lg:block">
-            {pillars.map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex gap-4">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface shadow-e1">
-                  <Icon className="h-5 w-5 text-brand" aria-hidden />
-                </span>
-                <span><span className="block font-semibold text-text">{title}</span><span className="text-text-2">{text}</span></span>
-              </li>
-            ))}
-          </ul>
+    <AuthShell>
+      <h2 className="text-3xl font-bold tracking-tight text-text">Welcome back</h2>
+      <p className="mt-2 text-text-2">Log in to your shop.</p>
+      <form onSubmit={submit} className="mt-8 space-y-5">
+        <FormError message={error} />
+        <Field label="Email or mobile number" name="login" autoComplete="username" required placeholder="you@shop.in or 98xxxxxxxx" />
+        <Field label="Password" name="password" type={show ? "text" : "password"} autoComplete="current-password" required
+          trailing={<PasswordToggle show={show} onToggle={() => setShow(!show)} />} />
+        <div className="flex justify-end">
+          <Link to="/forgot" className="text-sm font-semibold text-primary hover:underline">Forgot password?</Link>
         </div>
-
-        <p className="relative mt-10 hidden text-sm text-text-3 lg:block">© {new Date().getFullYear()} Dofida Private Limited</p>
-      </aside>
-
-      {/* Form */}
-      <main className="flex items-center justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-[400px]">
-          <h2 className="text-3xl font-bold tracking-tight text-text">Welcome back</h2>
-          <p className="mt-2 text-text-2">Log in to your shop.</p>
-
-          <form onSubmit={submit} className="mt-8 space-y-5" noValidate>
-            <Field label="Email or mobile number" name="login" autoComplete="username" inputMode="email" required placeholder="you@shop.in or 98xxxxxxxx" />
-            <Field
-              label="Password" name="password" type={show ? "text" : "password"} autoComplete="current-password" required
-              trailing={
-                <button type="button" onClick={() => setShow(!show)} className="grid h-10 w-10 place-items-center rounded-md text-text-2 hover:bg-surface-2" aria-label={show ? "Hide password" : "Show password"}>
-                  {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              }
-            />
-            <div className="flex justify-end">
-              <Link to="/forgot" className="text-sm font-semibold text-primary hover:underline">Forgot password?</Link>
-            </div>
-            <Button type="submit" className="w-full" size="xl" loading={busy}>Log in</Button>
-          </form>
-
-          <div className="mt-8 rounded-xl border border-border bg-surface p-5">
-            <p className="font-semibold text-text">New to Anylo?</p>
-            <p className="mt-1 text-sm text-text-2">30 days free, then <span className="tnum font-semibold text-text">₹599</span>/month per shop. GST included, nothing more.</p>
-            <Link to="/signup" className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary-soft font-semibold text-on-primary-soft transition-colors hover:bg-tint">
-              Start your free trial
-            </Link>
-          </div>
-        </div>
-      </main>
-    </div>
+        <Button type="submit" className="w-full" size="xl" loading={busy}>Log in</Button>
+      </form>
+      <div className="mt-8 rounded-xl border border-border bg-surface p-5">
+        <p className="font-semibold text-text">New to Anylo?</p>
+        <p className="mt-1 text-sm text-text-2">30 days free, then <span className="tnum font-semibold text-text">₹599</span>/month per shop. GST included, nothing more.</p>
+        <Link to="/signup" className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary-soft font-semibold text-on-primary-soft transition-colors hover:bg-tint">
+          Start your free trial
+        </Link>
+      </div>
+    </AuthShell>
   );
 }
