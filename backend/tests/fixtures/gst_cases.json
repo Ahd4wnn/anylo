@@ -1,0 +1,113 @@
+{
+  "_doc": "Shared GST fixtures (docs/06-gst.md §9). Copied verbatim to web, android and ios by scripts/sync_fixtures.sh. Amounts are strings.",
+  "cases": [
+    {
+      "id": "E1", "supply_type": "intra", "scheme": "regular", "round_off": true,
+      "lines": [
+        {"qty": "2", "unit_price": "100.00", "rate": "18", "price_includes_tax": false},
+        {"qty": "1", "unit_price": "50.50", "rate": "5", "price_includes_tax": false}
+      ],
+      "expect": {
+        "lines": [
+          {"taxable": "200.00", "cgst": "18.00", "sgst": "18.00", "total": "236.00"},
+          {"taxable": "50.50", "cgst": "1.26", "sgst": "1.26", "total": "53.02"}
+        ],
+        "taxable_total": "250.50", "cgst_total": "19.26", "sgst_total": "19.26",
+        "round_off": "-0.02", "grand_total": "289.00"
+      }
+    },
+    {
+      "id": "E2", "supply_type": "intra", "scheme": "regular", "round_off": true,
+      "lines": [
+        {"qty": "1", "unit_price": "118.00", "rate": "18", "price_includes_tax": true},
+        {"qty": "3", "unit_price": "99.00", "rate": "5", "price_includes_tax": true}
+      ],
+      "expect": {
+        "lines": [
+          {"taxable": "100.00", "cgst": "9.00", "sgst": "9.00", "total": "118.00"},
+          {"taxable": "282.86", "cgst": "7.07", "sgst": "7.07", "total": "297.00"}
+        ],
+        "taxable_total": "382.86", "cgst_total": "16.07", "sgst_total": "16.07",
+        "round_off": "0.00", "grand_total": "415.00"
+      }
+    },
+    {
+      "id": "E2b", "supply_type": "intra", "scheme": "regular", "round_off": true,
+      "lines": [{"qty": "1", "unit_price": "540.00", "rate": "5", "price_includes_tax": true}],
+      "expect": {"lines": [{"taxable": "514.28", "cgst": "12.86", "sgst": "12.86", "total": "540.00"}], "grand_total": "540.00"}
+    },
+    {
+      "id": "E3", "supply_type": "inter", "scheme": "regular", "round_off": true,
+      "lines": [{"qty": "10", "unit_price": "1250.00", "rate": "18", "price_includes_tax": false}],
+      "expect": {"lines": [{"taxable": "12500.00", "igst": "2250.00", "cgst": "0", "total": "14750.00"}], "grand_total": "14750.00"}
+    },
+    {
+      "id": "E4", "supply_type": "intra", "scheme": "regular", "round_off": true,
+      "discount_type": "flat", "discount_value": "50.00",
+      "lines": [
+        {"qty": "1", "unit_price": "300.00", "rate": "18", "price_includes_tax": false},
+        {"qty": "1", "unit_price": "200.00", "rate": "5", "price_includes_tax": false}
+      ],
+      "expect": {
+        "lines": [
+          {"invoice_discount_share": "30.00", "taxable": "270.00", "cgst": "24.30", "sgst": "24.30", "total": "318.60"},
+          {"invoice_discount_share": "20.00", "taxable": "180.00", "cgst": "4.50", "sgst": "4.50", "total": "189.00"}
+        ],
+        "taxable_total": "450.00", "round_off": "0.40", "grand_total": "508.00"
+      }
+    },
+    {
+      "id": "E5", "supply_type": "intra", "scheme": "regular", "round_off": true,
+      "discount_type": "flat", "discount_value": "10.00",
+      "lines": [
+        {"qty": "1", "unit_price": "100.00", "rate": "0", "price_includes_tax": false},
+        {"qty": "1", "unit_price": "100.00", "rate": "0", "price_includes_tax": false},
+        {"qty": "1", "unit_price": "100.00", "rate": "0", "price_includes_tax": false}
+      ],
+      "expect": {"lines": [{"invoice_discount_share": "3.34"}, {"invoice_discount_share": "3.33"}, {"invoice_discount_share": "3.33"}], "grand_total": "290.00"}
+    },
+    {
+      "id": "E6", "supply_type": "intra", "scheme": "composition", "round_off": true,
+      "lines": [
+        {"qty": "2", "unit_price": "100.00", "rate": "18", "price_includes_tax": false},
+        {"qty": "1", "unit_price": "50.50", "rate": "5", "price_includes_tax": false}
+      ],
+      "expect": {"taxable_total": "250.50", "cgst_total": "0", "round_off": "0.50", "grand_total": "251.00"}
+    },
+    {
+      "id": "E8-intra", "supply_type": "intra", "scheme": "regular", "round_off": false,
+      "lines": [{"qty": "1", "unit_price": "599.00", "rate": "18", "price_includes_tax": true}],
+      "expect": {"lines": [{"taxable": "507.62", "cgst": "45.69", "sgst": "45.69", "total": "599.00"}], "grand_total": "599.00"}
+    },
+    {
+      "id": "E8-inter", "supply_type": "inter", "scheme": "regular", "round_off": false,
+      "lines": [{"qty": "1", "unit_price": "599.00", "rate": "18", "price_includes_tax": true}],
+      "expect": {"lines": [{"taxable": "507.63", "igst": "91.37", "total": "599.00"}], "grand_total": "599.00"}
+    },
+    {
+      "id": "E9", "supply_type": "intra", "scheme": "regular", "round_off": true,
+      "discount_type": "percent", "discount_value": "10",
+      "lines": [
+        {"qty": "2", "unit_price": "150.00", "rate": "18", "price_includes_tax": false, "line_discount": "20.00"},
+        {"qty": "1", "unit_price": "120.00", "rate": "18", "price_includes_tax": false}
+      ],
+      "expect": {
+        "lines": [
+          {"invoice_discount_share": "28.00", "taxable": "252.00", "cgst": "22.68", "sgst": "22.68"},
+          {"invoice_discount_share": "12.00", "taxable": "108.00", "cgst": "9.72", "sgst": "9.72"}
+        ],
+        "taxable_total": "360.00", "round_off": "0.20", "grand_total": "425.00"
+      }
+    },
+    {
+      "id": "E10", "supply_type": "inter", "scheme": "composition", "round_off": true,
+      "lines": [{"qty": "1", "unit_price": "100.00", "rate": "18", "price_includes_tax": false}],
+      "expect_error": "gst.composition_interstate_blocked"
+    }
+  ],
+  "words": [
+    {"amount": "125450.75", "text": "Rupees One Lakh Twenty-Five Thousand Four Hundred Fifty and Seventy-Five Paise Only"},
+    {"amount": "640.00", "text": "Rupees Six Hundred Forty Only"},
+    {"amount": "12345678.00", "text": "Rupees One Crore Twenty-Three Lakh Forty-Five Thousand Six Hundred Seventy-Eight Only"}
+  ]
+}

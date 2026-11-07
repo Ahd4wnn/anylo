@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+gunicorn
+sqlalchemy>=2.0
+psycopg[binary]
+alembic
+pydantic-settings
+email-validator
+argon2-cffi
+pyjwt
+python-multipart
+httpx
+openpyxl
+pillow
+openai
