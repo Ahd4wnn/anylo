@@ -8,7 +8,7 @@ import { Logo } from "@/ui/Logo";
 const pillars = [
   { icon: Receipt, title: "Bill anything", text: "GST invoices in seconds: scan, tap or speak." },
   { icon: BarChart3, title: "Sell anything", text: "Any unit, any variant, stock that keeps itself right." },
-  { icon: Sparkles, title: "Run everything", text: "Profit, cash, staff, goals, plus an AI manager for owners." },
+  { icon: Sparkles, title: "Run everything", text: "Profit, cash, staff and goals, plus an AI manager for owners." },
 ];
 
 export function LoginPage() {
@@ -22,36 +22,37 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[1.05fr_1fr]">
+    <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[1.05fr_1fr] lg:p-3">
       {/* Brand panel */}
-      <aside className="relative overflow-hidden bg-deep text-on-deep px-6 pt-8 pb-10 sm:px-10 lg:flex lg:flex-col lg:justify-between lg:p-14">
-        <div aria-hidden className="pointer-events-none absolute hidden sm:block -bottom-56 -right-56 h-[26rem] w-[26rem] rounded-[30%] bg-primary/70 rotate-12" />
-        <div aria-hidden className="pointer-events-none absolute -right-24 bottom-52 hidden h-44 w-44 rounded-[30%] bg-brand/35 rotate-12 lg:block" />
-        <div className="relative"><Logo size={40} onDark /></div>
+      <aside className="relative overflow-hidden bg-tint px-6 pt-8 pb-10 sm:px-10 lg:flex lg:flex-col lg:justify-between lg:gap-10 lg:rounded-xl lg:p-14">
+        <div aria-hidden className="pointer-events-none absolute -bottom-32 -right-32 hidden h-96 w-96 rounded-full bg-primary-soft sm:block" />
+        <div className="relative"><Logo size={40} /></div>
 
         <div className="relative mt-10 lg:mt-0">
-          <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl" style={{ letterSpacing: "-0.035em" }}>
-            Bill anything.<br />Sell anything.<br />Run <span className="text-accent">everything.</span>
+          <h1 className="text-4xl font-bold leading-[1.08] text-text sm:text-5xl lg:text-[56px]" style={{ letterSpacing: "-0.03em" }}>
+            Bill anything.<br />Sell anything.<br />Run <span className="text-brand">everything.</span>
           </h1>
-          <p className="mt-5 max-w-md text-lg text-white/75">
-            The GST billing and business app built for Indian shops: fast at the counter, clear in the back office.
+          <p className="mt-5 max-w-md text-lg text-text-2">
+            The calm, clear way to run your shop: fast GST billing at the counter, and the whole business at a glance.
           </p>
           <ul className="mt-10 hidden space-y-5 lg:block">
             {pillars.map(({ icon: Icon, title, text }) => (
               <li key={title} className="flex gap-4">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white/10"><Icon className="h-5 w-5 text-white" aria-hidden /></span>
-                <span><span className="block font-semibold">{title}</span><span className="text-white/70">{text}</span></span>
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface shadow-e1">
+                  <Icon className="h-5 w-5 text-brand" aria-hidden />
+                </span>
+                <span><span className="block font-semibold text-text">{title}</span><span className="text-text-2">{text}</span></span>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative mt-10 hidden text-sm text-white/60 lg:block">© {new Date().getFullYear()} Dofida Private Limited</p>
+        <p className="relative mt-10 hidden text-sm text-text-3 lg:block">© {new Date().getFullYear()} Dofida Private Limited</p>
       </aside>
 
       {/* Form */}
       <main className="flex items-center justify-center px-6 py-10 sm:px-10">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-[400px]">
           <h2 className="text-3xl font-bold tracking-tight text-text">Welcome back</h2>
           <p className="mt-2 text-text-2">Log in to your shop.</p>
 
@@ -71,11 +72,11 @@ export function LoginPage() {
             <Button type="submit" className="w-full" size="xl" loading={busy}>Log in</Button>
           </form>
 
-          <div className="mt-8 rounded-lg border border-border bg-tint/60 p-5 dark:bg-tint">
+          <div className="mt-8 rounded-xl border border-border bg-surface p-5">
             <p className="font-semibold text-text">New to Anylo?</p>
             <p className="mt-1 text-sm text-text-2">30 days free, then <span className="tnum font-semibold text-text">₹599</span>/month per shop. GST included, nothing more.</p>
-            <Link to="/signup" className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-md bg-accent text-lg font-bold text-on-accent transition-colors hover:bg-accent-hover">
-              Start free trial
+            <Link to="/signup" className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-lg bg-primary-soft font-semibold text-on-primary-soft transition-colors hover:bg-tint">
+              Start your free trial
             </Link>
           </div>
         </div>
