@@ -86,7 +86,36 @@ class UserOut(BaseModel):
 
 class MeOut(BaseModel):
     user: UserOut
+    onboarding_completed: bool
     shops: list[ShopBrief]
     active_shop_id: UUID | None
     subscription: SubscriptionBrief | None
     permissions: list[str]
+
+
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+
+class ResetIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    platform: Platform = "web"
+
+
+class PinIn(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+    pin: str = Field(pattern=r"^[0-9]{4,6}$")
+
+
+class SessionOut(BaseModel):
+    id: UUID
+    device_label: str | None
+    platform: str | None
+    created_at: datetime
+    last_used_at: datetime

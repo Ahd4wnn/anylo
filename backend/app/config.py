@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     whatsapp_app_secret: str = ""
     whatsapp_verify_token: str = ""
 
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "Anylo <no-reply@anylo.in>"
+
     trial_days: int = 30
     grace_days: int = 7
 

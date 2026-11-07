@@ -196,3 +196,91 @@ def logout_all(db: Session, user_id: uuid.UUID) -> None:
         "UPDATE auth_sessions SET revoked_at = now() WHERE user_id = :i AND revoked_at IS NULL",
         i=user_id,
     )
+
+
+RESET_MINUTES = 30
+_TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # no 0/o/1/l/i confusion when read aloud
+
+
+def temp_password() -> str:
+    import secrets
+
+    return "".join(secrets.choice(_TEMP_ALPHABET) for _ in range(10))
+
+
+def forgot_password(db: Session, email: str) -> str | None:
+    """Returns the raw reset token (to be emailed) or None. Caller always answers 200."""
+    user = _q(
+        db, "SELECT id FROM users WHERE email = :e AND is_active", e=email.strip().lower()
+    ).first()
+    if not user:
+        return None
+    token, token_hash = new_refresh_token()
+    _q(
+        db,
+        "UPDATE password_reset_tokens SET used_at = now() WHERE user_id = :u AND used_at IS NULL",
+        u=user.id,
+    )
+    _q(
+        db,
+        "INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)"
+        " VALUES (:u, :h, now() + make_interval(mins => :m))",
+        u=user.id,
+        h=token_hash,
+        m=RESET_MINUTES,
+    )
+    return token
+
+
+def _set_password(db: Session, user_id: uuid.UUID, password: str) -> None:
+    """New password revokes every session and access token."""
+    _q(
+        db,
+        "UPDATE users SET password_hash = :h, must_change_password = false, failed_logins = 0,"
+        " locked_until = NULL, token_version = token_version + 1 WHERE id = :i",
+        h=hash_password(password),
+        i=user_id,
+    )
+    _q(
+        db,
+        "UPDATE auth_sessions SET revoked_at = now() WHERE user_id = :i AND revoked_at IS NULL",
+        i=user_id,
+    )
+
+
+def reset_password(db: Session, token: str, password: str) -> None:
+    row = _q(
+        db,
+        "UPDATE password_reset_tokens SET used_at = now()"
+        " WHERE token_hash = :h AND used_at IS NULL AND expires_at > now() RETURNING user_id",
+        h=hash_refresh_token(token),
+    ).first()
+    if not row:
+        raise AppError(
+            "auth.reset_invalid", "This reset link has expired. Please ask for a new one.", 400
+        )
+    _set_password(db, row.user_id, password)
+
+
+def change_password(
+    db: Session, user_id: uuid.UUID, old: str, new: str, platform: str
+) -> IssuedTokens:
+    u = _q(db, "SELECT password_hash FROM users WHERE id = :i", i=user_id).one()
+    if not verify_password(old, u.password_hash):
+        raise AppError("auth.wrong_password", "Your current password is not correct.", 400)
+    if old == new:
+        raise AppError(
+            "auth.same_password", "Choose a password different from the current one.", 400
+        )
+    _set_password(db, user_id, new)
+    user = _q(
+        db, "SELECT id, role, shop_id, token_version FROM users WHERE id = :i", i=user_id
+    ).one()
+    return _issue(db, user, platform=platform, device=None)
+
+
+def set_pin(db: Session, user_id: uuid.UUID, password: str, pin: str) -> None:
+    u = _q(db, "SELECT password_hash FROM users WHERE id = :i", i=user_id).one()
+    if not verify_password(password, u.password_hash):
+        raise AppError("auth.wrong_password", "Your password is not correct.", 400)
+    _q(db, "UPDATE users SET pin_hash = :h WHERE id = :i", h=hash_password(pin), i=user_id)

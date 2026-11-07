@@ -19,6 +19,7 @@ known-third-party = ["alembic"]
 "app/rls.py" = ["S608", "E501"]  # policy SQL built from constants
 "tests/*" = ["E501", "S608"]
 "app/services/*.py" = ["E501"]  # long SQL strings read better unwrapped
+"app/services/shop.py" = ["E501", "S608"]  # column list constant interpolated into SQL
 "app/permissions.py" = ["E741"]  # O/M/S role shorthands mirror the docs matrix
 
 [tool.mypy]

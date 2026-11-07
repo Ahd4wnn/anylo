@@ -1,12 +1,14 @@
 import uuid
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.errors import install_error_handlers
-from app.routers import auth, meta
+from app.routers import auth, meta, shop
 
 
 def create_app() -> FastAPI:
@@ -35,6 +37,10 @@ def create_app() -> FastAPI:
     install_error_handlers(app)
     app.include_router(auth.router)
     app.include_router(meta.router)
+    app.include_router(shop.router)
+    if settings.env == "dev":  # production: nginx serves /media
+        Path(settings.media_root).mkdir(parents=True, exist_ok=True)
+        app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 
     @app.get("/v1/health", tags=["meta"])
     def health() -> dict[str, str]:
