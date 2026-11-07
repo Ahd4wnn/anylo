@@ -76,6 +76,7 @@ Permission keys refer to `03-roles-permissions.md`. Abbreviations: **O** owner, 
 | POST | /products/photos/zip | O M | Bulk photos matched by SKU or name |
 | GET | /products/export | O M | XLSX |
 | POST | /products/labels | O M | Barcode label PDF for selected variants (A4 sheets or 50×25 mm roll) |
+| POST | /products/snap | O M S | **Snap & Find**: multipart photo + `lang` → OpenAI vision → `{identified_name, suggestions{category, hsn, gst_rate}, matches[variant…]}`. Requires the per-shop flag; counts against the monthly quota; usage is logged even when it fails |
 
 ## inventory
 

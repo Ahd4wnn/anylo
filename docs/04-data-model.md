@@ -259,6 +259,7 @@ At checkout the invoice creates `payments` rows for each non-zero method. The du
 
 **ai_conversations** 🔒: `shop_id NULL (owner multi-shop), user_id, title, created_at`.
 **ai_messages** 🔒: `conversation_id, role ('user','assistant','tool'), content, tool_name, tool_args jsonb, tokens_in, tokens_out, model, created_at`.
+**snap_scans**: `shop_id, user_id, identified_name, matched_variant_id NULL, language, succeeded, tokens, created_at`. Written in its own committed step so failed scans are counted (fixes PlantBill bug 13).
 **ai_usage**: `shop_id, month, requests, tokens_in, tokens_out, cost_estimate`. Quota checks read this table.
 
 ## 8. Platform & ops

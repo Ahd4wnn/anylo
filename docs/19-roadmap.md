@@ -114,6 +114,9 @@ The commit message hint in `code` style is the suggested Conventional Commit sco
 - [ ] `feat(web)`: HID scanner listener
 - [ ] `feat(web)`: camera barcode scanning
 - [ ] `feat(web)`: voice search
+- [ ] `feat(api)`: Snap & Find (OpenAI vision, matching, quota, snap_scans)
+- [ ] `feat(web)`: Snap & Find sheet
+- [ ] `feat(android)`: Snap & Find camera flow
 - [ ] `feat(web)`: held bills
 - [ ] `feat(web)`: keyboard shortcuts + help overlay
 - [ ] `feat(web)`: receipt canvas renderer + raster ESC/POS
