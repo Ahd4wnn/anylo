@@ -84,6 +84,11 @@ Permission keys refer to `03-roles-permissions.md`. Abbreviations: **O** owner, 
 | GET | /stock/movements | O M | Filter by variant, kind, date |
 | POST | /stock/adjustments | O M | Count correction / damage / opening |
 | GET | /stock/low | O M S | Below reorder level |
+| GET / POST | /stock/counts | O M | List / start a stocktake (optional category) |
+| GET | /stock/counts/{id} | O M | Lines with expected vs counted |
+| PUT | /stock/counts/{id}/lines | O M | Upsert counted quantities (batch) |
+| POST | /stock/counts/{id}/post | O M | Create adjustment movements |
+| POST | /stock/counts/{id}/cancel | O M | |
 | GET | /stock/valuation | O M | Qty × cost by category |
 | GET / POST / PATCH / DELETE | /suppliers[/{id}] | O M | |
 | GET | /suppliers/{id}/ledger | O M | |
@@ -177,6 +182,8 @@ Permission keys refer to `03-roles-permissions.md`. Abbreviations: **O** owner, 
 | GET | /reports/gst/gstr1/export | O M | `?format=xlsx|json` |
 | GET | /reports/gst/gstr3b | O M | |
 | GET | /reports/gst/registers | O M | Sales/purchase register XLSX |
+| GET / POST | /reports/gst/filed-periods | O M | List / mark a period filed (locks edits in that month) |
+| DELETE | /reports/gst/filed-periods/{id} | O | Unlock (audited) |
 | GET | /reports/export | O M | `?kind=full&from&to`: the multi-sheet business workbook (sync ≤ 5k rows, else 202 + job id) |
 | GET | /exports/{job_id} | O M | Status + signed download URL |
 | GET / POST | /goals | O M | |

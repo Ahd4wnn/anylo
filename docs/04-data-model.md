@@ -119,6 +119,9 @@ PostgreSQL 16. Conventions:
 | ref_type, ref_id | invoice / purchase / adjustment id |
 | reason, created_by | |
 
+**stock_counts**: `shop_id, name, category_id NULL, status ('open','posted','cancelled'), started_by, posted_by, posted_at`.
+**stock_count_lines**: `count_id, shop_id, variant_id, expected_qty (snapshot at start), counted_qty, variance_qty, variance_value`. Unique `(count_id, variant_id)`. Posting creates `adjustment` movements (`08-inventory.md` §6).
+
 **suppliers**: `shop_id, name, gstin, phone, email, address, state_code, opening_balance, deleted_at`.
 
 **purchases**
@@ -220,6 +223,8 @@ At checkout the invoice creates `payments` rows for each non-zero method. The du
 
 **doc_series**: `shop_id, doc_type, prefix, fy, next_seq` (`06-gst.md` §6).
 
+**gst_filed_periods**: `shop_id, period ('2026-10'), return_type ('GSTR1','GSTR3B','CMP08'), marked_by, marked_at`. Unique `(shop_id, period, return_type)`. Once GSTR-1 for a month is marked filed, invoices in that month can't be edited or cancelled. Corrections go through credit/debit notes.
+
 **approval_requests**: `shop_id, kind ('discount','return','collection','cash_close'), ref_id, payload jsonb, requested_by, status, decided_by, decided_at, note`.
 
 ## 6. Money out & cash
@@ -269,6 +274,7 @@ At checkout the invoice creates `payments` rows for each non-zero method. The du
 | **notification_targets** | |
 | **notification_reads** | |
 | **crash_reports** | ported from PlantBill, plus `platform` |
+| **devices** | `user_id, platform, push_token, app_version, last_seen_at`; registered in v1, push sending later |
 | **feature_flags** | `key, enabled, shop_ids uuid[]` |
 | **platform_ledger_entries** | PlantBill admin ledger, soft delete |
 | **whatsapp_messages** | `shop_id, invoice_id, to_phone, template, status, wa_message_id, error, attempts, sent_at, delivered_at, read_at` |
