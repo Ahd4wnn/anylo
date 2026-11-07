@@ -9,7 +9,7 @@ Kotlin + Jetpack Compose. This is the main counter device for most shops: a chea
 | Language / build | Kotlin 2.1+, AGP 8.7+, Gradle version catalog, JDK 17, KSP |
 | SDK | minSdk 24, target/compile 36 |
 | UI | Compose BOM, Material 3 (themed with Anylo tokens; light + dark), type-safe Navigation-Compose (`@Serializable` routes) |
-| DI | Hilt |
+| DI | Manual: one `Session` in `AnyloApp`, passed to an app-level `AppState` ViewModel. Hilt was dropped in M1 to keep builds light (no annotation processing); revisit if the graph grows past a handful of objects |
 | Network | Retrofit + OkHttp + kotlinx.serialization (`ignoreUnknownKeys`, `explicitNulls=false`) |
 | Local | DataStore (prefs, cart, held-bill mirror), Room (product cache for fast offline search, held bills) |
 | Security | EncryptedSharedPreferences/Keystore for tokens (ported `TokenStore`, lazily initialised) |
