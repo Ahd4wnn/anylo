@@ -84,20 +84,18 @@ line_discount_i (if the line has its own discount) is applied first, then the in
 
 net_i = gross_i − line_discount_i − d_i                      # still incl or excl as entered
 
-if line is tax-inclusive:
-    taxable_i = q2(net_i × 100 / (100 + rate_i + cess_i))
-    tax_total_i = net_i − taxable_i                          # line total == net_i exactly
-else:
-    taxable_i = net_i
-    tax_total_i computed below
+if line is tax-exclusive:
+    taxable_i  = net_i
+    cess_amt_i = q2(taxable_i × cess_i / 100)
+    intra: cgst_i = sgst_i = q2(taxable_i × rate_i / 200)
+    inter: igst_i = q2(taxable_i × rate_i / 100)
 
-intra-state:
-    cgst_i = q2(taxable_i × rate_i / 2 / 100)
-    sgst_i = cgst_i
-    (inclusive lines: cgst_i = q2((tax_total_i − cess_amt_i) / 2); sgst_i = tax_total_i − cess_amt_i − cgst_i)
-inter-state:
-    igst_i = q2(taxable_i × rate_i / 100)   (inclusive: igst_i = tax_total_i − cess_amt_i)
-cess_amt_i = q2(taxable_i × cess_i / 100)
+if line is tax-inclusive (MRP pricing) — back the tax out of net, keep halves equal:
+    k = 100 + rate_i + cess_i
+    cess_amt_i = q2(net_i × cess_i / k)
+    intra: cgst_i = sgst_i = q2(net_i × rate_i / (2 × k));  taxable_i = net_i − cgst_i − sgst_i − cess_amt_i
+    inter: igst_i = q2(net_i × rate_i / k);                taxable_i = net_i − igst_i − cess_amt_i
+    # line total == net_i exactly and CGST == SGST always; taxable absorbs the paisa
 
 line_total_i = taxable_i + cgst_i + sgst_i + igst_i + cess_amt_i
 
@@ -174,7 +172,9 @@ Round-off −0.02 → **Grand total 289.00**.
 | D | 3 | 99.00 | 5 | 297.00 | 282.86 | 7.07 | 7.07 | 297.00 |
 | **Σ** | | | | 415.00 | 382.86 | 16.07 | 16.07 | 415.00 |
 
-Round-off 0.00 → **415.00**. (For D: 297 × 100 / 105 = 282.857… → 282.86; tax 14.14 → 7.07 + 7.07.)
+Round-off 0.00 → **415.00**. (For D: CGST = 297 × 5 / 210 = 7.071… → 7.07; SGST 7.07; taxable = 297 − 14.14 = 282.86.)
+
+**E2b: inclusive line where the halves would drift.** 1 × ₹540.00 incl 5% → CGST = SGST = q2(540 × 5 / 210) = 12.86; taxable = 540 − 25.72 = **514.28**; total 540.00. (Backing out taxable first would give 514.29 and an unequal 12.86 / 12.85 split, which this algorithm forbids.)
 
 **E3: inter-state B2B** (customer GSTIN starts with 29, Karnataka; place of supply 29)
 
