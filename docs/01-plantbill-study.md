@@ -113,7 +113,7 @@ PlantBill (`Ahd4wnn/plantbilling`, private) is Anylo's predecessor: a billing Sa
 
 ## 4. Drop
 
-- **Plant-specific:** plant photo scan, preset plant list, "Nursery" copy, leaf logo. AI image identification may return later as generic "snap to find product".
+- **Plant-specific copy and branding:** "Nursery" strings and the leaf logo. Plant photo scan is **not** dropped: it becomes the generic **Snap & Find** for any product (§6). The preset plant list becomes the nursery starter catalogue.
 - **Dead columns:** `bill_type`, `last_wholesale_price`, `products.is_active` misuse, `whatsapp_last_status`, `chat_id`.
 - **Hard-wired payment columns** (`cash_amount` / `upi_amount` / `due_amount`) on every money table: replaced by a `payments` child table with a `method` enum.
 - **Forced font scale and density on Android:** respect system accessibility settings and test layouts at 1.3× instead.
@@ -126,3 +126,58 @@ PlantBill (`Ahd4wnn/plantbilling`, private) is Anylo's predecessor: a billing Sa
 3. Elderly-friendly UX (big targets, plain words) drove adoption. Keep the 48 dp / 56 dp targets, but give power users dense desktop views and keyboard shortcuts.
 4. Android outpaced web and iOS because each client was hand-mirrored. Anylo uses OpenAPI as the single contract and keeps a parity checklist (`19-roadmap.md`).
 5. Without a real payment flow, trial conversion depended on phone calls. Anylo needs Razorpay from day one.
+
+## 6. Feature parity: every PlantBill feature, PRO MAX
+
+**Rule:** Anylo ships **every** PlantBill feature. Each row must be ✅ on API, web and Android before its milestone closes (tracked in `docs/parity.md`).
+
+| PlantBill feature | Anylo PRO MAX version | Milestone |
+|---|---|---|
+| Self-signup, 30-day trial, onboarding wizard, Getting Started checklist, spotlight tour | Same, plus business-type presets, a GST step, printer test and staff invites; a tour per role; the checklist stays on Home until done | M1 |
+| Roles: admin, ops, owner (multi-shop), manager, salesperson | admin, support, owner, manager, salesperson. **Managers and owners can bill.** Permission matrix + approval PIN | M1 |
+| Multi-owner per shop, multi-shop per owner | Same + owner shop switcher everywhere, consolidated reports, owner-level goals | M1 / M6 |
+| Android saved-accounts one-tap switch | Same on Android + a web account switcher; device/session list with remote logout | M1 |
+| Shop business details, logo, UPI ID | Same + GST tax profile, invoice series/prefixes, receipt footer and language. UPI/GSTIN are owner-only (fraud fix) | M1 |
+| Staff management (create, activate, reset password, delete with type-to-confirm) | Same + temporary passwords forced to change, manager PIN, staff performance report | M1 |
+| Product catalogue: photo, category, price, CRUD | Variants, SKU, barcode, HSN, GST rate, decimal units, MRP/cost, brand, archive/restore | M2 |
+| Bulk upload CSV/XLSX + sample file | Dry-run preview with row errors, then commit; export → edit → import round-trip | M2 |
+| Bulk photos via ZIP | Same, matched by SKU or name; auto WebP + thumbnail | M2 |
+| Preset plant list at ₹0 | Starter catalogues per business type (nursery keeps the plant list) | M1 |
+| Bill: tap to add, editable line price, blank qty until filled | Same + camera and HID scanning, variants, decimal qty, price-to-qty, keyboard shortcuts, three-pane desktop POS | M3 |
+| Flat / % discount | Line + invoice discounts with pre-tax allocation; over the limit → approval | M3 |
+| Cash / UPI / Split / Due | Cash (change calculator), UPI (local QR with invoice ref), Card, Due (credit limit), any split | M3 |
+| UPI QR | Generated locally (no third-party leak), amount + invoice number prefilled | M3 |
+| Idempotent checkout, per-shop bill numbers | Same + gapless GST series per FY with prefix; cancel keeps the number | M3 |
+| Customer phone lookup, "returning customer" | Deduplicated customers, balance and last visit shown at checkout, B2B GSTIN capture | M3 / M4 |
+| Quick Add (filled the catalogue with one-off items) | Custom line, not saved unless "Save as product" is ticked | M3 |
+| Voice search (phonetic, Indian English) | Same matcher, generalized; top-3 picker; multilingual recognizer | M3 |
+| **Plant camera identification (OpenAI)** | **Snap & Find:** photo of any item → OpenAI vision → matching catalogue products, or create a new one with suggested name, category, HSN and GST rate. Per-shop flag + monthly quota | M3 |
+| Barcode scanner (fake on web) | Real: camera (BarcodeDetector/ZXing, ML Kit, VisionKit) + USB/Bluetooth HID scanners + label printing | M2 / M3 |
+| Held bills (local only on Android/iOS) | Server-synced held bills across devices + local mirror + "not saved" recovery on network loss | M3 |
+| Thermal printing: BT/Serial/USB (web), SPP raster (Android), AirPrint (iOS) | Raster everywhere (₹ + Indic scripts), 58/80 mm, auto-print, copies, logo; BLE on iOS; GST receipt layout | M3 |
+| WhatsApp Cloud API PDF invoice: auto-send, template, footer, language, delivery/read status, resend, wa.me fallback | Same, on the job queue (no duplicate sends), with a signed webhook, consent/opt-out, due reminders and an owner weekly digest | M7 |
+| Public receipt link | Random-token link (not the UUID), phone masked, PDF download, revocable | M3 |
+| Sales history: filters, edited-only, staff filter, pagination | Same + number search, has-due, cancelled, returns; DataTable with export | M3 |
+| Bill detail, edit (with audit), delete (manager) | Same-day edit with an item-level diff in the audit log; **cancel instead of delete** (GST-safe); returns via credit notes | M3 / M4 |
+| Edit & delete audit log (FK-less) | Audit log for every money and settings entity, visible to owners | M3 |
+| Dues list, partial collection, salesperson collection → manager approval | Customer ledger (khata), FIFO collection, receipts, approvals inbox, WhatsApp reminders, ageing report | M4 |
+| Expenses with categories, paid from cash/UPI | Same + soft delete/audit, GST on expenses, bill-photo attachment, supplier link | M4 |
+| Labour: workers, daily/monthly wages, attendance (P/A/half), advances, due-clear, statements, Aadhaar | Same engine (ported with its tests), masked Aadhaar, gender includes "other", payments in the unified payments table | M4 |
+| Borrowings: lender, partial repayment | Same + repayments in the cash flow, interest notes | M4 |
+| Cash in hand (running total, editable base) | Day close with counted vs expected cash, differences flagged, day book; the running total is still shown | M4 |
+| Daily/weekly/monthly/custom report, staff filter, categories, top 15 products | Full report hub: P&L, cash flow, receivables/payables, product/staff/expense analysis, hour-of-day heatmap | M6 |
+| 10-sheet styled XLSX report | 18-sheet business workbook + goal-tracker workbook with charts + GST workbooks | M6 |
+| Report via WhatsApp (broken) | Any statement shared as a PDF link on WhatsApp | M6 / M7 |
+| Owner dashboard: KPIs, sales by shop, payment mix, top sellers, staff leaderboard | Dashboard with period comparisons, goals, alerts, hour heatmap, consolidated multi-shop view | M6 |
+| Charts (bar, donut, ratio, trend) | Recharts / Vico / Swift Charts in the brand palette, with tooltips and axes | M6 |
+| Customers list + CSV download | Customer profiles, ledger PDF, tags, B2B details, XLSX export | M4 |
+| Admin: platform dashboard, shops table with health dots, create shop, trial extend/end, plant-scan toggle, shop detail drawer | Same + subscriptions/MRR, comped months, feature flags, read-only audited impersonation | M7 |
+| Admin: owners, staff directory, cross-shop customer directory + export watermark | Same; customer PII is admin-only (support excluded via RLS) | M7 |
+| Admin: broadcast notifications, notification bell, read receipts | Same + device registration (ready for push later) | M7 |
+| Admin: crash reports (ACRA) + ANR watchdog | Same for Android + iOS MetricKit + Sentry for API/web | M7 |
+| Admin: platform ledger (sales, expenses, dues, trash/restore) | Same + Razorpay income posted automatically | M7 |
+| Ops role | `support` role, with PII excluded by RLS | M1 |
+| Trial expiry → read-only (402) + "contact us" | Razorpay subscription at ₹599 all-inclusive, grace period, banners, GST invoice for the fee | M7 |
+| Languages: en, ml, hi, ta, kn (Android only) | All five on web, Android and iOS, reviewed by native speakers; receipts print in the chosen language | M7 |
+| Network monitor, ANR watchdog, crash ingest | Same, with a non-blocking offline banner instead of a blocking dialog | M1 |
+| — (new in Anylo) | GST engine, GSTR-1/3B exports, inventory and purchases, suppliers, stocktake, goals, AI manager, dark mode, keyboard-first POS | M3–M7 |
