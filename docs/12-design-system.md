@@ -10,7 +10,7 @@
 |---|---|
 | Name | **Anylo** (always capital A, rest lowercase) |
 | Motto | *Bill anything. Sell anything. Run everything.* Used on the landing hero, login, splash and the receipt footer option |
-| Logo | Wordmark "anylo" in a geometric sans, lowercase, Deep Blue. The symbol is a rounded square in Royal Blue containing an abstract **"A" formed by a rising bar-chart stroke**, with the top bar in Energy Orange (sales going up). It also works single-colour at 16 px. Deliverables: SVG mark, wordmark, lockup, app icons (Android adaptive + monochrome, iOS), favicon, PWA maskable |
+| Logo | **Official mark: `design/brand/anylo-mark.png`** (2000×2000): a soft, rounded white **"A"** (a hollow left stroke and a solid right stroke joined by a curved base) on **Bright Indigo** (`#4F6BFF`; the source file samples `#5170FF` and is normalised to `#4F6BFF`). The mark is the app icon, favicon, splash and avatar. The wordmark "anylo" (lowercase, geometric sans, Deep Blue on light / white on dark) sits to the right of the mark in the horizontal lockup. **To do (M0):** trace the PNG to `anylo-mark.svg` (single path), then export Android adaptive icon (white A foreground, indigo background, plus monochrome layer), iOS app icon, PWA icons 192/512/maskable and favicon 32/16. On Deep Blue backgrounds the mark keeps its indigo tile; it is never recoloured orange |
 | Signature moment | The **orange Pay / Save bill button** and the orange success tick. Orange appears almost nowhere else, so it always means "money is happening" |
 | Voice | Plain, warm, direct. "Bill saved", not "Transaction completed successfully". Say "you", avoid jargon, and explain GST terms inline the first time they appear |
 
@@ -24,7 +24,7 @@ Tokens are defined once in `design/tokens.json`, which generates the Tailwind co
 |---|---|---|---|
 | **Deep Blue** | `#031273` | Brand anchor: sidebar, POS total panel, landing hero, headings on light, logo wordmark | White on it 15.7:1 |
 | **Royal Blue** | `#0504AA` | **Primary** in light mode: buttons, links, active nav, focus, selected states | White on it 13.1:1 |
-| **Bright Indigo** | `#4F6BFF` | Primary family for dark mode, charts (series 1), illustrations, info badges | 4.3:1 on white, so never for small text on white; 4.5:1 on the dark bg |
+| **Bright Indigo** | `#4F6BFF` | **Logo colour** and app-icon tile; primary family for dark mode, charts, illustrations, info badges | 4.3:1 on white, so never for small text on white; 4.5:1 on the dark bg |
 | **Energy Orange** | `#FF4800` | **Accent, used sparingly**: Pay / Save bill / Subscribe CTAs, success tick, the logo bar, "new" dots, the active goal ring | White text only at ≥ 18 px bold (3.4:1 = AA large); Deep Blue text 4.6:1 for small labels |
 | **Orange-Yellow** | `#F59E0B` | Highlight & caution: dues, "at risk" goals, low stock, trial banner | Never as text on white (2.2:1); Deep Blue text on it 7.3:1 |
 | **Sea White** | `#D7F2FA` | Cool tint: selected rows, info panels, empty-state backgrounds, hero sections, chips | Deep Blue on it 13.4:1; Royal on it 11.2:1 |
