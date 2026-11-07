@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { api, onRemoteLogout, restoreSession, session } from "@/api/client";
+import { queryClient } from "@/api/queryClient";
 
 export interface Me {
   user: { id: string; email: string; full_name: string; phone: string | null; role: string; preferred_language: string; must_change_password: boolean };
+  onboarding_completed: boolean;
   shops: { id: string; name: string }[];
   active_shop_id: string | null;
   subscription: { status: string; trial_ends_at: string; days_left: number | null; read_only: boolean } | null;
@@ -19,15 +21,29 @@ interface AuthState {
   signup: (data: Record<string, string>) => Promise<void>;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
+  switchShop: (id: string) => Promise<void>;
+  refreshMe: () => Promise<void>;
+  acceptTokens: (accessToken: string) => Promise<void>;
 }
 
 export const useAuth = create<AuthState>((set, get) => {
+  const SHOP_KEY = "anylo.shop";
+  const remembered = () => { try { return localStorage.getItem(SHOP_KEY); } catch { return null; } };
+  const remember = (id: string | null) => { try { if (id) localStorage.setItem(SHOP_KEY, id); else localStorage.removeItem(SHOP_KEY); } catch { /* storage blocked */ } };
   const loadMe = async () => {
-    const me = await api<Me>("/auth/me");
+    session.setShop(remembered());
+    let me: Me;
+    try {
+      me = await api<Me>("/auth/me");
+    } catch {
+      session.setShop(null); // remembered shop no longer accessible
+      me = await api<Me>("/auth/me");
+    }
     session.setShop(me.active_shop_id);
+    remember(me.active_shop_id);
     set({ me, status: "ready" });
   };
-  const clear = () => { session.set(null); session.setShop(null); set({ me: null, status: "anonymous" }); };
+  const clear = () => { queryClient.clear(); session.set(null); session.setShop(null); set({ me: null, status: "anonymous" }); };
   onRemoteLogout(clear);
 
   return {
@@ -54,8 +70,20 @@ export const useAuth = create<AuthState>((set, get) => {
     },
     async logout() {
       await api("/auth/logout", { method: "POST" }).catch(() => undefined);
+      remember(null);
       clear();
     },
     can: (p) => !!get().me?.permissions.includes(p),
+    async switchShop(id) {
+      remember(id);
+      queryClient.clear(); // never show one shop's cached data in another
+
+      await loadMe();
+    },
+    refreshMe: loadMe,
+    async acceptTokens(accessToken) {
+      session.set(accessToken);
+      await loadMe();
+    },
   };
 });
