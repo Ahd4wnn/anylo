@@ -2,6 +2,8 @@
 
 Anylo must produce invoices that are correct under Indian GST law and export data a shop (or its CA) can file from. This doc is the spec for `backend/app/services/gst/`. The worked examples in §9 are **test fixtures**: they must pass byte-for-byte.
 
+> ✅ Reviewed 2026-11-08 by an AI CA-expert pass against CBIC/GSTN sources (findings F1–F18 applied below). **A practising CA must still sign off** before launch.
+>
 > ⚠️ GST rules and rates change, most recently with the September 2025 rate rationalization. That is why **rates, thresholds and HSN data are database rows, not code constants.** Get a Chartered Accountant to review this doc before launch and after any GST Council change.
 
 ## 1. Shop tax profile (`shops` + `shop_tax_profiles`)
@@ -13,9 +15,11 @@ Anylo must produce invoices that are correct under Indian GST law and export dat
 | `legal_name`, `trade_name` | text | Printed on the invoice |
 | `state_code` | 2-digit (§10) | Must match GSTIN[0:2]; decides intra- vs inter-state |
 | `address`, `pincode` | text | Printed |
-| `composition_rate` | decimal (e.g. 1.00) | Used only for the composition liability report |
+| `composition_rate` | decimal (e.g. 1.00) | Composition liability report (CMP-08) on **taxable** turnover only (Rule 7); exempt sales excluded. Composition shops also file **GSTR-4** annually (30 June) |
+| `einvoice_applicable` | bool | True once aggregate turnover exceeded ₹5 Cr in any FY since 2017-18. v1 has no IRN, so **B2B invoices and B2B credit notes are blocked** for these shops (B2C allowed) |
+| `filing_frequency` | `monthly`, `qrmp` | QRMP shops file GSTR-1 quarterly (+ optional IFF) and pay monthly via PMT-06 |
 | `prices_include_tax` | bool, default `true` | Default for new products (Indian retail usually prices MRP-inclusive) |
-| `hsn_digits_required` | 4 or 6 | 4 if aggregate turnover ≤ ₹5 Cr, else 6 |
+| `hsn_digits_required` | 4 or 6 | 4 if aggregate turnover of the **preceding FY** ≤ ₹5 Cr, else 6 (Notification 78/2020-CT). Required on **every product** of a regular shop, because GSTR-1 Table 12 has mandatory B2B **and** B2C HSN tabs |
 | `invoice_round_off` | bool, default `true` | Rounds the grand total to the nearest rupee |
 
 **Document type by scheme:**
@@ -26,7 +30,9 @@ Anylo must produce invoices that are correct under Indian GST law and export dat
 | composition | **Bill of Supply** with the declaration *"Composition taxable person, not eligible to collect tax on supplies"* | Bill of Supply |
 | unregistered | **Invoice / Cash Memo**: no tax lines, no GSTIN | same |
 
-A regular shop selling a mix of taxable and exempt items issues one Tax Invoice with 0% lines.
+A regular shop selling a mix of taxable and exempt items to an **unregistered** buyer issues one **"Invoice-cum-Bill of Supply"** (Rule 46A). A Tax Invoice with 0% lines is also accepted.
+
+The composition declaration must be printed **at the top** of the bill of supply. **Composition shops cannot make inter-state supplies of goods** (Sec 10(2)(c)), so Anylo blocks "dispatch to another state" and inter-state B2B for them.
 
 ## 2. Product tax fields
 
@@ -52,17 +58,19 @@ Seed values after the 2025 rationalization:
 |---|---|
 | 0 | nil / exempt / non_gst |
 | 0.25 | taxable |
+| 1.5 | taxable (cut & polished diamonds) |
 | 3 | taxable |
 | 5 | taxable |
 | 18 | taxable |
 | 40 | taxable |
 
-Legacy 12% and 28% stay as inactive rows so old invoices still render. An admin screen manages the table, and changing it never rewrites past invoices because each line snapshots its rate.
+Legacy rows stay **inactive** so old invoices still render: 12% (`effective_to` 2025-09-21) and 28% (`effective_to` 2026-01-31). **Compensation cess ended on 1 Feb 2026.** Tobacco now carries non-GST duties that never appear on a GST invoice, so `cess_rate` defaults to 0 and the admin screen warns on any non-zero value. An admin screen manages the table, and changing it never rewrites past invoices because each line snapshots its rate.
 
 ## 4. Place of supply
 
 - **Default:** the shop's `state_code` (an over-the-counter sale), so the sale is **intra-state → CGST + SGST** (UTGST in UTs without a legislature; printed as "UTGST" when the shop's state code is a UT).
-- **B2B with a customer GSTIN:** place of supply defaults to the customer's GSTIN state. The cashier can override it (for example, goods delivered elsewhere).
+- **B2B with a customer GSTIN:** place of supply is still the **shop's state for over-the-counter delivery**. If goods are **dispatched** to the buyer, it is the delivery state (IGST Act Sec 10(1)(a)). For bill-to/ship-to on a third party's instructions, it is the state of the person directing delivery (Sec 10(1)(b)). The cashier answers **"Delivered at counter / Dispatched to …"**. **Anylo never infers place of supply from the GSTIN alone.** A delivery address that differs from the recipient address is printed (Rule 46(o)).
+- Charging the wrong head means paying again under the right one and claiming a refund (CGST Sec 77), so the default must be correct.
 - **Delivery to another state** (B2C): the cashier picks the delivery state.
 - If `place_of_supply != shop.state_code`, the sale is **inter-state → IGST**.
 
@@ -76,13 +84,13 @@ All amounts are `Decimal`. `q2(x)` = quantize to 0.01 with ROUND_HALF_UP.
 for each line:
     gross_i = q2(unit_price_i × qty_i)                       # unit_price is as entered (incl or excl)
 
-invoice_discount = flat amount, or q2(Σ gross_i × pct / 100)
-allocate invoice_discount across lines proportional to gross_i:
-    d_i = q2(invoice_discount × gross_i / Σ gross)
-    put the rounding remainder (invoice_discount − Σ d_i) on the line with the largest gross
-line_discount_i (if the line has its own discount) is applied first, then the invoice discount is allocated on what remains.
+base_i = gross_i − line_discount_i                          # line discounts apply first
+invoice_discount = flat amount, or q2(Σ base_i × pct / 100)
+allocate invoice_discount across lines proportional to base_i:
+    d_i = q2(invoice_discount × base_i / Σ base)
+    put the rounding remainder (invoice_discount − Σ d_i) on the line with the largest base (first on ties)
 
-net_i = gross_i − line_discount_i − d_i                      # still incl or excl as entered
+net_i = base_i − d_i                      # still incl or excl as entered
 
 if line is tax-exclusive:
     taxable_i  = net_i
@@ -103,7 +111,7 @@ invoice:
     taxable_total = Σ taxable_i;  cgst_total = Σ cgst_i;  …
     total_before_round = Σ line_total_i
     grand_total = round_half_up(total_before_round, 0) if round_off else total_before_round
-    round_off = grand_total − total_before_round                 # printed, in [-0.50, +0.50]
+    round_off = grand_total − total_before_round                 # printed, in (−0.50, +0.50]
 ```
 
 **Rules**
@@ -121,6 +129,8 @@ invoice:
   - `debit_note`
   - `receipt` (payment receipts)
 - The number is `prefix + FY + "/" + zero-padded seq`, for example `AN/25-26/00042`. **≤ 16 characters**, using only `A–Z 0–9 / -`, unique within the financial year (1 Apr – 31 Mar).
+- **Uniqueness is per GSTIN per FY**, across `invoice`, `bill_of_supply` and `cash_memo`. Two shops on one GSTIN must use different prefixes, enforced by `UNIQUE (gstin, fy, number)`. Notes use their own prefixes. Creating a series checks `len(prefix) + 6 + seq_width ≤ 16`.
+- Payment receipts (`RCPT/…`) for collecting dues are **not** GST receipt vouchers (those are for advances, Sec 31(3)(d)) and are excluded from Table 13.
 - Allocation: `UPDATE doc_series SET next_seq = next_seq + 1 WHERE … RETURNING next_seq - 1`, inside the checkout savepoint. That makes it gapless and race-free (the PlantBill pattern).
 - A new FY row is created lazily on the first document of the year.
 - **Cancelled invoices keep their number.** Status `cancelled` and amounts are zeroed in reports; the series still counts them in "documents issued".
@@ -198,6 +208,17 @@ Round-off +0.40 → **508.00**.
 
 **E6: composition shop.** Same items as E1 → Bill of Supply, no tax lines. Total 200.00 + 50.50 = 250.50; half-up to the rupee → round-off **+0.50**, **grand total 251.00**. (This fixture locks in half-up behaviour at exactly ₹0.50.)
 
+**E8: subscription, ₹599 GST-inclusive, round-off off** (our own invoice, `10` §4)
+
+| Case | Taxable | CGST 9% | SGST 9% | IGST 18% | Total |
+|---|---|---|---|---|---|
+| Intra-state | 507.62 | 45.69 | 45.69 | — | 599.00 |
+| Inter-state | 507.63 | — | — | 91.37 | 599.00 |
+
+**E9: line discount + invoice discount.** Line H is 2 × 150.00 with a 20.00 line discount; line J is 1 × 120.00. Both are 18% tax-exclusive, with a 10% invoice discount. base H = 280.00, base J = 120.00, Σ 400.00, so the invoice discount is 40.00, split H 28.00 and J 12.00. Taxable H = 252.00 (CGST/SGST 22.68 each); taxable J = 108.00 (9.72 each). Σ taxable 360.00, tax 64.80, total 424.80, round-off +0.20 → **425.00**.
+
+**E10: composition shop, inter-state dispatch** → rejected with `gst.composition_interstate_blocked`.
+
 **E7: amount in words.** 1,25,450.75 → "Rupees One Lakh Twenty-Five Thousand Four Hundred Fifty and Seventy-Five Paise Only".
 
 ## 10. State codes (seed `gst_states`)
@@ -235,6 +256,13 @@ Codes 25 (old Daman & Diu) and 28 (old Andhra Pradesh) are accepted only on lega
 - Time limit: a credit note can be issued up to **30 November after the end of the FY** of the original invoice (or the annual return date, if earlier). After that, the UI blocks the credit note and suggests a non-GST adjustment.
 - **Debit notes** (price increase after the sale) are rare in retail and are API-only in v1.
 
+## 11a. Credit-note rules in force (Nov 2026)
+
+- **Since 1 Oct 2025:** a supplier reduces output tax for a **B2B** credit note only once the recipient has reversed the matching ITC (Sec 34(2) proviso). The UI says: "Your tax reduces once the buyer accepts/reverses ITC in IMS."
+- **From 1 Nov 2026** (amended Sec 15(3)(b) / 34(1); have the CA confirm the gazette): a **post-sale discount** credit note (`reason='discount'`) need not be tied to one invoice or a prior agreement. It may reference a period or customer, which is why `original_invoice_id` is nullable for discounts only. Returns always reference the original invoice.
+- **Time limit:** 30 November after the FY end, or the annual-return filing date, whichever is earlier.
+- **Filing hygiene:** Table 13 (documents issued) is mandatory from the May 2025 period. A return cannot be filed more than **3 years** after its due date, so Anylo warns on very old unfiled periods. Corrections after GSTR-1 is filed go through **GSTR-1A** or credit/debit notes.
+
 ## 12. Purchases and input tax credit
 
 - Purchase entries (`08-inventory.md`) record:
@@ -249,8 +277,8 @@ Codes 25 (old Daman & Diu) and 28 (old Andhra Pradesh) are accepted only on lega
 
 | Report | Content | Format |
 |---|---|---|
-| **GSTR-1** | **B2B**: invoices to GSTINs, rate-wise<br>**B2CL**: inter-state B2C invoices > ₹1,00,000, per invoice<br>**B2CS**: all other B2C, grouped by place of supply + rate<br>**CDNR / CDNUR**: credit notes to registered / unregistered customers<br>**HSN summary**: split B2B / B2C, HSN + UQC + qty + taxable + taxes<br>**Documents issued** (Table 13): series ranges, total, cancelled<br>**Nil / exempt** | XLSX in the layout of the GST offline tool sheets, plus JSON (best effort; the portal schema version is recorded in the file) |
-| **GSTR-3B summary** | 3.1(a) outward taxable; 3.1(c) nil/exempt; 4(A)(5) ITC from purchases; net tax payable by head | XLSX + on-screen |
+| **GSTR-1** | **B2B**: invoices to GSTINs, rate-wise<br>**B2CL**: inter-state B2C invoices > ₹1,00,000, per invoice<br>**B2CS**: all other B2C, grouped by place of supply + rate<br>**CDNR**: notes to registered buyers<br>**CDNUR**: notes against **B2CL or export** invoices only. Notes against B2CS invoices are **netted into the B2CS rows** with the same place of supply and rate (Table 7), or into Table 10 for an earlier period<br>**HSN summary**: split B2B / B2C, HSN + UQC + qty + taxable + taxes<br>**Documents issued** (Table 13): series ranges, total, cancelled<br>**Nil / exempt** | XLSX in the layout of the GST offline tool sheets, plus JSON (best effort; the portal schema version is recorded in the file) |
+| **GSTR-3B summary** | 3.1(a) outward taxable; 3.1(c) nil/exempt; 3.1(e) non-GST; **3.2** inter-state supplies to unregistered persons by place of supply; 4(A)(5) ITC; 4(B) reversals; net payable by head. Built from **exactly** the GSTR-1 data, because Table 3 is hard-locked from GSTR-1/1A since the July 2025 period | XLSX + on-screen |
 | **CMP-08 helper** (composition) | Quarterly turnover × composition rate | XLSX + on-screen |
 | **Sales register / purchase register** | Line-level with all tax columns | XLSX / CSV |
 
@@ -258,7 +286,11 @@ Every GST export carries a header row with GSTIN, period, generated-at, and the 
 
 ## 14. Out of scope for v1
 
-- **E-invoicing (IRN/QR):** needed only when aggregate turnover is > ₹5 Cr.
+- **E-invoicing (IRN/QR):** mandatory for B2B invoices and notes once aggregate turnover exceeded ₹5 Cr in any FY since 2017-18. At ₹10 Cr or more, an invoice must reach the IRP within 30 days. v1 has no IRN, so B2B documents are blocked for shops flagged `einvoice_applicable`.
+- **E-way bill:** the UI only warns when "dispatched" is chosen and the value exceeds ₹50,000 (state limits vary).
+- **Reverse charge:** expenses get an `rcm` flag (e.g. rent to an unregistered landlord for commercial premises, GTA freight, legal fees) and a self-invoice reminder; computation is later.
+- **E-commerce sales** (Table 14) stay out of POS B2CS.
+- **≤ ₹200 B2C daily consolidated invoice** (Rule 46 proviso): optional, later.
 - E-way bills.
 - Reverse charge.
 - Exports and SEZ.

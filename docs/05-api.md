@@ -201,16 +201,16 @@ Permission keys refer to `03-roles-permissions.md`. Abbreviations: **O** owner, 
 
 All shop routes are also available to owners with `X-Shop-Id`.
 
-## AI manager (`11-ai-manager.md`)
+## AI manager (`11-ai-manager.md`): owner-exclusive
 
 | Method | Path | Who | Purpose |
 |---|---|---|---|
-| GET | /ai/conversations | O M | |
-| POST | /ai/conversations | O M | New conversation |
-| GET / DELETE | /ai/conversations/{id} | O M | |
-| POST | /ai/conversations/{id}/messages | O M | Send a message; **SSE stream** of tokens + tool-call status |
-| GET | /ai/suggestions | O M | Starter questions tailored to the shop |
-| GET | /ai/usage | O M | Quota used this month |
+| GET | /ai/conversations | O | |
+| POST | /ai/conversations | O | New conversation |
+| GET / DELETE | /ai/conversations/{id} | O | |
+| POST | /ai/conversations/{id}/messages | O | Send a message; **SSE stream** of tokens + tool-call status |
+| GET | /ai/suggestions | O | Starter questions tailored to the shop |
+| GET | /ai/usage | O | Quota used this month |
 
 ## subscription (`10-subscription-razorpay.md`)
 

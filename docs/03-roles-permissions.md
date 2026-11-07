@@ -52,7 +52,7 @@ Key: ✅ allowed · 👁 read only · ⏳ needs manager approval · — not allo
 | GST reports (GSTR-1/3B) | ✅ | ✅ | — | — | — |
 | Goals: set | ✅ | ✅ | — | — | — |
 | Goals: view | ✅ | ✅ | team goal only | — | — |
-| AI manager | ✅ | ✅ | — | — | — |
+| AI manager (**owner-exclusive**) | ✅ | — | — | — | — |
 | Shop settings (GSTIN, UPI, invoice series, printer defaults) | ✅ | ✅ (not GSTIN/UPI) | — | 👁 | 👁 |
 | Staff: manage salespeople | ✅ | ✅ | — | — | — |
 | Staff: manage managers | ✅ | — | — | — | — |

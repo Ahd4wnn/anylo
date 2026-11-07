@@ -19,9 +19,9 @@ An assistant that acts like a sharp shop manager. It answers questions about **t
 
 ## 2. Who and where
 
-- **Roles:** owner and manager. Owners can ask across all their shops ("Which shop did best?").
+- **Roles: owners only.** The AI manager is an owner-exclusive feature, a reason to be the owner on Anylo. Managers, salespeople and platform staff never see it, and the API returns 403 for them. Owners can ask about one shop or across all their shops ("Which shop did best?").
 - **Web:** a right-side panel in `/app` (also the full page `/app/ai`).
-- **Android:** an "Ask Anylo" tab for O/M, with voice input (speech-to-text) and voice output optional.
+- **Android:** an "Ask Anylo" tab for owners, with voice input (speech-to-text) and voice output optional.
 - **Entry points:**
   - suggestion chips on the dashboard ("Explain this drop")
   - the weekly digest notification
@@ -108,7 +108,7 @@ Tools are registered in `services/ai/tools.py` with a decorator that:
 
 ## 6. Weekly digest (proactive)
 
-- Job `ai.summarize_week`, Monday 08:00 shop time, for O/M with digest enabled (default on).
+- Job `ai.summarize_week`, Monday 08:00 shop time, for owners with digest enabled (default on).
 - It calls the same tools with a fixed "weekly review" prompt using `OPENAI_MODEL_DEEP`. The output has:
   - 5 bullet highlights
   - 1 risk

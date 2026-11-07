@@ -61,7 +61,7 @@ One React app in `web/`. It serves the marketing landing page, the POS, the shop
 /app/reports            Report hub: P&L, cash flow, sales, stock, receivables, payables, staff, products
 /app/reports/gst        GSTR-1, GSTR-3B, registers
 /app/goals
-/app/ai                 AI manager (also a slide-over panel everywhere in /app)
+/app/ai                 AI manager, owner-only (also a slide-over panel in /app for owners)
 /app/notifications
 /app/settings/{business,tax,invoices,printing,payments,staff,notifications,data}
 /app/billing            Subscription (owner)

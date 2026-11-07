@@ -76,7 +76,7 @@ Methods: **Cash, UPI, Card, Due (credit), Split.**
 | Action | Who | Rule |
 |---|---|---|
 | Reprint / share | O M S | Any time |
-| Edit | O M | Same business day, and not in a period the owner marked "GST filed". Creates an audit entry with the before/after diff and sets `is_edited`. Stock movements are re-posted as a diff. |
+| Edit | O M | **Only before the invoice is printed, shared or sent** (`invoices.handed_over_at` is NULL), on the same day, and not in a "GST filed" period. It creates an audit diff and re-posts the stock diff. After hand-over, the options are **Cancel & re-issue** (new number, same day, only if goods have not left or were fully returned) or a **credit/debit note**. GST law provides no cancellation once supply has happened, and two copies must never exist with one number. |
 | Cancel | O M | Number kept, status `cancelled`, stock reversed, payments reversed (refund recorded). Reason required. |
 | Return / exchange | O M (S → approval) | Credit note (`06-gst.md` §11). Exchange = credit note + new invoice paid with store credit |
 | Collect due | O M S | Against the invoice or the customer (FIFO). S creates `pending_approval` payments; cash isn't counted as "in hand" until approved. Prints a payment receipt (`RCPT/25-26/0001`) |
@@ -114,12 +114,12 @@ Two ways to approve:
           TAX INVOICE
  No: AN/25-26/00042   08-11-2026 14:32
  Bill to: Ravi K (98xxxx1234)
- POS: Kerala (32)
+ POS: Kerala (32)   Reverse charge: No
  --------------------------------
  Item              Qty   Rate   Amt
- Basmati Rice 5kg    1  540.00 540.00
+ Basmati Rice 5kg  1 BAG 540.00 540.00
   HSN 1006  GST 5%
- Pen Blue x10        2   50.00 100.00
+ Pen Blue x10      2 PCS  50.00 100.00
   HSN 9608  GST 18%
  --------------------------------
  Taxable value                599.02
@@ -136,6 +136,7 @@ Two ways to approve:
  --------------------------------
    Thank you! Visit again.
    Computer generated invoice
+   Authorised signatory: <shop>
         [QR: public link]
 ```
 Prices are tax-inclusive (MRP). The figures follow `06-gst.md` §5 (see fixture E2b for the rice line).

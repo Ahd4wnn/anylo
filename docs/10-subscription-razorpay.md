@@ -96,10 +96,10 @@
 
 ## 4. Our GST invoice to the shop
 
-- Dofida is the supplier (`PLATFORM_GSTIN`, `PLATFORM_STATE_CODE`). The service SAC is `998314` (IT design and development services); the CA should confirm it.
+- Dofida is the supplier (`PLATFORM_GSTIN`, `PLATFORM_STATE_CODE`). The service SAC is **`997331`** (licensing the right to use software, i.e. SaaS; 18%). 4-digit `9973` is enough while Dofida's turnover is ≤ ₹5 Cr. Place of supply follows IGST Sec 12(2): the shop's registered state if B2B, otherwise the address on record. The invoice prints "Price inclusive of GST" with the split from fixture E8. It is issued on or before each charge date (continuous supply, Sec 31(5)).
 - Intra- or inter-state is decided by the shop's state.
 - If the shop has a GSTIN, it is a B2B invoice, which lets the shop claim ITC.
-- The invoice is generated with the same GST engine and PDF templates, in the platform series `ANY/25-26/000001`. It is listed under `/billing/invoices`.
+- The invoice is generated with the same GST engine and PDF templates, in the platform series `ANY/26-27/000001`. It is listed under `/billing/invoices`.
 
 ## 5. Mobile apps and store policies
 

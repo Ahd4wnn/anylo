@@ -164,7 +164,9 @@ PostgreSQL 16. Conventions:
 |---|---|
 | shop_id | |
 | doc_type | `invoice, bill_of_supply, cash_memo` |
-| series_id, number | `number` unique per `(shop_id, doc_type, fy)` |
+| series_id, number | `number` unique per **`(gstin, fy)`** across invoice/bill_of_supply/cash_memo (`06-gst.md` §6) |
+| delivery_mode, delivery_address, delivery_state_code | `counter` or `dispatched`; drives place of supply |
+| handed_over_at | set on the first print/share/send; after this the invoice is immutable |
 | fy | `'25-26'` |
 | issued_at | timestamptz |
 | customer_id | NULL for walk-in |
@@ -284,7 +286,7 @@ At checkout the invoice creates `payments` rows for each non-zero method. The du
 
 - `CHECK (grand_total = taxable_total + cgst_total + sgst_total + igst_total + cess_total + round_off)` on invoices, credit notes and purchases.
 - `CHECK (qty > 0)` on lines. `CHECK (amount > 0)` on payments.
-- `UNIQUE (shop_id, doc_type, fy, number)` on invoices.
+- `UNIQUE (gstin, fy, number)` on invoices (`gstin` snapshotted from the tax profile; unregistered shops use `shop_id` instead).
 - `UNIQUE (shop_id, idempotency_key)` on invoices, purchases, payments and credit notes.
 - `UNIQUE (shop_id, barcode) WHERE barcode IS NOT NULL`; `UNIQUE (shop_id, sku)`.
 - Partial index `invoices (shop_id, issued_at) WHERE status='issued'`.

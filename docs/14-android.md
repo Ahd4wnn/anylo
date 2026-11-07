@@ -62,7 +62,7 @@ app/src/main/java/in/anylo/app/
 | owner | Owner overview (shop switcher at top; pick a shop to act as manager) | Home · Sell · Shops · Reports · More |
 | admin/support | Admin overview (light: shops, subscriptions, notifications) | Overview · Shops · More |
 
-"Ask Anylo" (the AI manager) is a floating button on Home and Reports for O/M.
+"Ask Anylo" (the AI manager) is a floating button on Home and Reports for **owners only**.
 
 ## 4. POS on Android (see `07-pos-billing.md`)
 
