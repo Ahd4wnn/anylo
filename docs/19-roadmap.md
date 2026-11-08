@@ -166,19 +166,25 @@ Notes (M4 as built):
 ## M5 · Purchases, suppliers, stock depth
 
 **API**
-- [ ] `feat(db)`: suppliers, purchases, purchase_lines
-- [ ] `feat(api)`: supplier CRUD + ledger
-- [ ] `feat(api)`: purchase draft/post/cancel with weighted-average cost
-- [ ] `feat(api)`: supplier payments
-- [ ] `feat(api)`: stock count (stocktake)
-- [ ] `feat(api)`: quick restock drafts from low stock
+- [x] `feat(db)`: suppliers, purchases, purchase_lines
+- [x] `feat(api)`: supplier CRUD + ledger
+- [x] `feat(api)`: purchase draft/post/cancel with weighted-average cost
+- [x] `feat(api)`: supplier payments
+- [x] `feat(api)`: stock count (stocktake)
+- [x] `feat(api)`: quick restock drafts from low stock
 
 **Web + Android**
-- [ ] `feat(web)`: purchases with scan-in
-- [ ] `feat(web)`: suppliers
-- [ ] `feat(web)`: stock count
-- [ ] `feat(android)`: purchases
-- [ ] `feat(android)`: stock count with scan
+- [x] `feat(web)`: purchases with scan-in
+- [x] `feat(web)`: suppliers
+- [x] `feat(web)`: stock count
+- [x] `feat(android)`: purchases
+- [x] `feat(android)`: stock count with scan
+
+Notes (M5 as built):
+- Purchases are priced with the same GST engine; the place of supply comes from the supplier's state (from their GSTIN). The same supplier bill number can't be entered twice.
+- Cost is weighted average. GST is part of the cost only when ITC can't be claimed (the purchase's "I can claim this GST back" switch, always off for composition shops).
+- Cancelling a posted purchase takes the stock back out and reverses its payments; the average cost is not rolled back (the next purchase re-averages).
+- A stock count freezes the system quantity when it starts and posts (counted − frozen), so sales made during counting still count. Uncounted items are untouched.
 
 ## M6 · Finance, reports, goals, GST returns, dashboard
 

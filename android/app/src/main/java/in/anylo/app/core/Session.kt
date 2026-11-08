@@ -90,6 +90,7 @@ class Session(private val store: TokenStore) {
     val catalogue: CatalogueApi = retrofit.create(CatalogueApi::class.java)
     val sales: SalesApi = retrofit.create(SalesApi::class.java)
     val money: MoneyApi = retrofit.create(MoneyApi::class.java)
+    val buying: PurchasingApi = retrofit.create(PurchasingApi::class.java)
 
     /** true = new tokens; false = session really invalid (logged out). Network errors throw. */
     suspend fun refresh(): Boolean {

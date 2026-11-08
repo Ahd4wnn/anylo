@@ -285,3 +285,41 @@ interface MoneyApi {
     @POST("borrowings") suspend fun addLoan(@Body b: LoanReq): JsonElement
     @POST("borrowings/{id}/repay") suspend fun repay(@Path("id") id: String, @Body b: RepayReq): JsonElement
 }
+
+// --- M5: suppliers, purchases, stock counts (backend/app/schemas/purchasing.py) ---
+
+@Serializable data class SupplierDto(val id: String, val name: String, val phone: String? = null, val balance: String = "0")
+@Serializable data class SupplierPage(val items: List<SupplierDto>, val payable: String)
+@Serializable data class SupplierReq(val name: String, val phone: String? = null)
+@Serializable data class PurchaseRowDto(
+    val id: String, @SerialName("supplier_name") val supplierName: String, @SerialName("supplier_invoice_no") val billNo: String? = null,
+    @SerialName("grand_total") val total: String, val status: String, @SerialName("created_at") val createdAt: String, val items: Int = 0,
+)
+@Serializable data class PurchaseRows(val items: List<PurchaseRowDto>)
+@Serializable data class PurchaseLineReq(@SerialName("variant_id") val variantId: String, val qty: String, @SerialName("unit_cost") val unitCost: String)
+@Serializable data class PaidReq(val method: String, val amount: String)
+@Serializable data class PurchaseReq(
+    @SerialName("supplier_id") val supplierId: String, @SerialName("supplier_invoice_no") val billNo: String?,
+    val lines: List<PurchaseLineReq>, val post: Boolean, val paid: List<PaidReq>, @SerialName("idempotency_key") val idempotencyKey: String,
+)
+@Serializable data class PurchaseDto(val id: String, val status: String, @SerialName("grand_total") val total: String)
+@Serializable data class CountRowDto(val id: String, val name: String, val status: String, val counted: Int, val items: Int)
+@Serializable data class CountLineDto(
+    @SerialName("variant_id") val variantId: String, val name: String, @SerialName("variant_name") val variantName: String? = null,
+    @SerialName("expected_qty") val expected: String, @SerialName("counted_qty") val counted: String? = null,
+)
+@Serializable data class CountDto(val id: String, val name: String, val status: String, val counted: Int, val lines: List<CountLineDto>, @SerialName("variance_value") val varianceValue: String)
+@Serializable data class CountReq(val name: String)
+@Serializable data class CountLineReq(@SerialName("variant_id") val variantId: String? = null, val code: String? = null, @SerialName("counted_qty") val counted: String? = null, val add: String? = null)
+
+interface PurchasingApi {
+    @GET("suppliers") suspend fun suppliers(): SupplierPage
+    @POST("suppliers") suspend fun addSupplier(@Body b: SupplierReq): SupplierDto
+    @GET("purchases") suspend fun purchases(): PurchaseRows
+    @POST("purchases") suspend fun create(@Body b: PurchaseReq): PurchaseDto
+    @GET("stock-counts") suspend fun counts(): List<CountRowDto>
+    @POST("stock-counts") suspend fun startCount(@Body b: CountReq): CountDto
+    @GET("stock-counts/{id}") suspend fun count(@Path("id") id: String): CountDto
+    @POST("stock-counts/{id}/lines") suspend fun countLine(@Path("id") id: String, @Body b: CountLineReq): JsonElement
+    @POST("stock-counts/{id}/post") suspend fun postCount(@Path("id") id: String): CountDto
+}

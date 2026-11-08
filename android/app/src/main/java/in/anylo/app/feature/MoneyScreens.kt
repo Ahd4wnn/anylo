@@ -79,7 +79,8 @@ private fun num(v: String) = v.toBigDecimalOrNull() ?: BigDecimal.ZERO
 
 private enum class Hub(val label: String, val permission: String) {
     Customers("Customers", "customer.view"), Cash("Cash & close day", "cash.view_today"), Expenses("Expenses", "expense.create"),
-    Labour("Labour", "labour.attendance"), Loans("Loans", "borrowing.manage"), Approvals("Approvals", "approval.decide"),
+    Labour("Labour", "labour.attendance"), Loans("Loans", "borrowing.manage"), Purchases("Purchases", "purchase.manage"),
+    StockCount("Stock count", "stock.manage"), Approvals("Approvals", "approval.decide"),
 }
 
 /** Home is the hub for everything that doesn't fit in the bottom bar. */
@@ -104,6 +105,8 @@ fun HomeHub(app: AppState, me: Me) {
         Hub.Labour -> { LabourScreen(app) { open = null }; return }
         Hub.Loans -> { LoansScreen(app) { open = null }; return }
         Hub.Approvals -> { ApprovalsScreen(app) { open = null }; return }
+        Hub.Purchases -> { PurchasesScreen(app) { open = null }; return }
+        Hub.StockCount -> { StockCountScreen(app) { open = null }; return }
         null -> Unit
     }
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -144,7 +147,7 @@ private fun Stat(label: String, value: String, modifier: Modifier) {
 }
 
 @Composable
-private fun Screen(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
+internal fun Screen(title: String, onBack: () -> Unit, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize().background(Anylo.colors.bg).statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -157,7 +160,7 @@ private fun Screen(title: String, onBack: () -> Unit, content: @Composable () ->
 }
 
 @Composable
-private fun RowItem(title: String, sub: String?, trailing: String? = null, onClick: (() -> Unit)? = null) {
+internal fun RowItem(title: String, sub: String?, trailing: String? = null, onClick: (() -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface)
         .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
