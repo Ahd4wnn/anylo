@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, Home, LogOut, Package, ReceiptText, Settings, ShoppingCart, Store, Users, Wallet } from "lucide-react";
+import { BarChart3, ChevronDown, Home, LogOut, Package, ReceiptText, Settings, ShoppingCart, Store, Truck, Users, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/features/auth/store";
@@ -10,6 +10,7 @@ const NAV = [
   { to: "/pos", label: "Sell", icon: ShoppingCart },
   { to: "/app/sales", label: "Sales", icon: ReceiptText },
   { to: "/app/items", label: "Items", icon: Package },
+  { to: "/app/purchases", label: "Purchases", icon: Truck, perm: "purchase.manage" },
   { to: "/app/customers", label: "Customers", icon: Users },
   { to: "/app/money", label: "Money", icon: Wallet },
   { to: "/app/reports", label: "Reports", icon: BarChart3, soon: true },
@@ -63,13 +64,13 @@ function NavItem({ to, label, icon: Icon, end, soon, compact }: (typeof NAV)[num
 }
 
 export function AppShell({ children }: { children?: ReactNode }) {
-  const { me, logout } = useAuth();
+  const { me, logout, can } = useAuth();
   const sub = me?.subscription;
   return (
     <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-surface p-4 lg:flex">
         <div className="px-2 pb-6 pt-2"><Logo size={32} /></div>
-        <nav className="space-y-1" aria-label="Main">{NAV.map((n) => <NavItem key={n.to} {...n} />)}</nav>
+        <nav className="space-y-1" aria-label="Main">{NAV.filter((n) => !("perm" in n) || can(n.perm ?? "")).map((n) => <NavItem key={n.to} {...n} />)}</nav>
         <div className="mt-auto rounded-lg border border-border p-3">
           <p className="truncate text-sm font-semibold">{me?.user.full_name}</p>
           <p className="truncate text-xs capitalize text-text-2">{me?.user.role}</p>
@@ -97,7 +98,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children ?? <Outlet />}</main>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface lg:hidden" aria-label="Main">
-        {NAV.filter((n) => !["Reports", "Settings"].includes(n.label)).map((n) => <NavItem key={n.to} {...n} compact />)}
+        {NAV.filter((n) => !["Reports", "Settings", "Purchases"].includes(n.label)).map((n) => <NavItem key={n.to} {...n} compact />)}
       </nav>
       <Toaster />
     </div>

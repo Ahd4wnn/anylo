@@ -521,9 +521,9 @@ def restock_suggestions(db: Session, actor: Actor) -> list[dict[str, Any]]:
     """Low-stock items with a suggested order (reorder_level x 2 - stock, at least 1)."""
     rows = _q(
         db,
-        "SELECT v.id AS variant_id, p.name, v.name AS variant_name, v.stock_qty, v.reorder_level, v.cost_price,"
+        "SELECT v.id AS variant_id, p.name, v.name AS variant_name, v.stock_qty, v.reorder_level, v.cost_price, coalesce(gr.rate, 0) AS tax_rate,"
         " greatest(v.reorder_level * 2 - v.stock_qty, 1) AS suggested_qty"
-        " FROM product_variants v JOIN products p ON p.id = v.product_id"
+        " FROM product_variants v JOIN products p ON p.id = v.product_id LEFT JOIN gst_rates gr ON gr.id = p.tax_rate_id"
         " WHERE v.shop_id = :s AND p.track_stock AND p.deleted_at IS NULL AND v.reorder_level > 0 AND v.stock_qty <= v.reorder_level"
         " ORDER BY v.stock_qty - v.reorder_level, p.name LIMIT 200",
         s=shop_id_of(actor),
