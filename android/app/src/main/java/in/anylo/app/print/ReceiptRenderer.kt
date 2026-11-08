@@ -125,12 +125,6 @@ fun receiptBitmap(r: Receipt, dots: Int, logo: Bitmap?): Bitmap {
     }
     r.remarks?.takeIf { it.isNotBlank() }?.let { rule(); wrap("Note: $it", 16) }
     rule()
-    // UPI QR for money still due, otherwise a QR to the online copy of the bill.
-    val qrSize = (150 * scale).toInt()
-    y += pad
-    c.drawBitmap(qrBitmap(r.upiDueUri ?: r.publicUrl, qrSize), (dots - qrSize) / 2f, y, null)
-    y += qrSize
-    text(if (r.upiDueUri != null) "Scan to pay the balance" else "Scan for your bill", 16, align = Paint.Align.CENTER)
     wrap(r.footer, 18, true)
     text("Computer generated · Bill anything. Sell anything.", 14, align = Paint.Align.CENTER)
 

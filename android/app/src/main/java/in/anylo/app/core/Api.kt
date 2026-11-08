@@ -52,7 +52,8 @@ import retrofit2.http.Query
     val id: String, val name: String, @SerialName("business_type") val businessType: String,
     val phone: String? = null, @SerialName("address_line1") val address: String? = null,
     val city: String? = null, val pincode: String? = null, @SerialName("state_name") val stateName: String,
-    @SerialName("upi_vpa") val upi: String? = null, @SerialName("upi_payee_name") val upiPayeeName: String? = null, val tax: TaxProfile,
+    @SerialName("upi_vpa") val upi: String? = null, @SerialName("upi_payee_name") val upiPayeeName: String? = null,
+    @SerialName("logo_url") val logoUrl: String? = null, val tax: TaxProfile,
 )
 @Serializable data class ShopPatch(
     val name: String? = null, val phone: String? = null, @SerialName("address_line1") val address: String? = null,

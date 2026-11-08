@@ -1,5 +1,8 @@
 package `in`.anylo.app.feature
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,7 +44,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,6 +68,9 @@ import `in`.anylo.app.ui.Logo
 import `in`.anylo.app.ui.PrimaryButton
 import `in`.anylo.app.ui.SecondaryButton
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 @Composable
 fun BusinessCard(app: AppState, shop: Shop, button: String, onSaved: (Shop) -> Unit) {
@@ -233,6 +241,7 @@ fun SettingsScreen(app: AppState, me: Me) {
         SecondaryButton("Printer setup", { showPrinter = true }, Modifier.fillMaxWidth())
         shop?.let { s ->
             BusinessCard(app, s, "Save changes") { shop = it }
+            LogoCard(app, s) { shop = it }
             GstCard(app, s, "Save GST settings") { shop = it }
         }
         if (app.can("staff.salespeople")) StaffCard(app)
@@ -315,4 +324,46 @@ private fun AddStaffDialog(app: AppState, onDismiss: () -> Unit, onCreated: (Sta
             }
         },
     )
+}
+
+/** Logo printed at the top of every bill. Uses the system photo picker, so no storage permission. */
+@Composable
+fun LogoCard(app: AppState, shop: Shop, onChanged: (Shop) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var logo by remember(shop.logoUrl) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(shop.logoUrl) { logo = `in`.anylo.app.print.loadLogo(shop.logoUrl) }
+    suspend fun refresh() { runCatching { app.session.api.shop() }.onSuccess(onChanged) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        scope.launch {
+            busy = true; error = null
+            runCatching {
+                val type = ctx.contentResolver.getType(uri) ?: "image/jpeg"
+                val bytes = ctx.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+                app.session.api.uploadLogo(MultipartBody.Part.createFormData("file", "logo", bytes.toRequestBody(type.toMediaType())))
+            }.onSuccess { refresh() }.onFailure { error = app.session.messageOf(it) }
+            busy = false
+        }
+    }
+    Card {
+        Text("Logo on bills", style = MaterialTheme.typography.titleLarge)
+        ErrorBanner(error)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)).background(androidx.compose.ui.graphics.Color.White), contentAlignment = Alignment.Center) {
+                logo?.let { androidx.compose.foundation.Image(it.asImageBitmap(), "Shop logo", Modifier.size(64.dp)) }
+                    ?: Text("No logo", color = Anylo.colors.text3, style = MaterialTheme.typography.bodySmall)
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SecondaryButton(if (busy) "Uploading…" else if (shop.logoUrl != null) "Change logo" else "Upload logo",
+                    { if (!busy) picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                if (shop.logoUrl != null) TextButton(onClick = { scope.launch { runCatching { app.session.api.deleteLogo() }.onSuccess { refresh() }.onFailure { error = app.session.messageOf(it) } } }) {
+                    Text("Remove", color = Anylo.colors.text2)
+                }
+            }
+        }
+        Text("A dark logo on a white or clear background prints best.", color = Anylo.colors.text2, style = MaterialTheme.typography.bodyMedium)
+    }
 }
