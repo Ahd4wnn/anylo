@@ -195,7 +195,7 @@ fun PosScreen(app: AppState) {
         runCatching { shop = app.session.api.shop() }
         runCatching { rates = app.session.catalogue.rates() }
     }
-    LaunchedEffect(message) { if (message != null) { kotlinx.coroutines.delay(3000); message = null } }
+    LaunchedEffect(message) { if (message != null) { kotlinx.coroutines.delay(5000); message = null } }
 
     fun add(p: ProductDto) { if (p.variants.size > 1) picking = p else p.variants.firstOrNull()?.let { cart.add(lineOf(p, it)); message = "Added ${p.name}" } }
 
@@ -450,6 +450,7 @@ private fun CustomerDialog(onClose: () -> Unit) {
         })
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HeldDialog(app: AppState, onClose: () -> Unit, onMessage: (String) -> Unit) {
     val scope = rememberCoroutineScope()
@@ -457,29 +458,41 @@ private fun HeldDialog(app: AppState, onClose: () -> Unit, onMessage: (String) -
     var held by remember { mutableStateOf<List<HeldDto>?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { runCatching { app.session.sales.held() }.onSuccess { held = it }.onFailure { error = app.session.messageOf(it) } }
-    AlertDialog(onDismissRequest = onClose, confirmButton = {}, dismissButton = { TextButton(onClick = onClose) { Text("Close") } },
-        title = { Text("Held bills") },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                ErrorBanner(error)
-                if (held?.isEmpty() == true) Text("No held bills.", color = Anylo.colors.text2)
-                held?.forEach { h ->
-                    Row(Modifier.fillMaxWidth().clickable {
+    // Same bottom-sheet pattern as payment: swipe down or the close button dismisses it.
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val close: () -> Unit = { scope.launch { sheet.hide() }.invokeOnCompletion { onClose() } }
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = sheet, containerColor = Anylo.colors.bg,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Anylo.colors.border) }) {
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Held bills", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            IconButton(onClick = close) { Icon(Icons.Filled.Close, "Close") }
+        }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            ErrorBanner(error)
+            if (held?.isEmpty() == true) Text("No held bills.", Modifier.fillMaxWidth().padding(vertical = 24.dp), color = Anylo.colors.text2, textAlign = TextAlign.Center)
+            held?.forEach { h ->
+                val n = h.payload.lines.size
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface)
+                    .border(1.dp, Anylo.colors.border, RoundedCornerShape(14.dp)).clickable {
                         scope.launch {
                             // Never lose the bill on screen: park it first.
                             if (cart.state.lines.isNotEmpty()) runCatching { app.session.sales.hold(HeldReq("Parked " + LocalTime.now().format(DateTimeFormatter.ofPattern("hh:mm a")), cart.state)) }
                                 .onFailure { error = app.session.messageOf(it); return@launch }
                             cart.load(h.payload)
                             runCatching { app.session.sales.unhold(h.id) }
-                            onMessage("Resumed ${h.label}"); onClose()
+                            onMessage("Resumed ${h.label}"); close()
                         }
-                    }.padding(vertical = 14.dp)) {
-                        Text(h.label, Modifier.weight(1f), fontWeight = FontWeight.Medium)
-                        Text("${h.payload.lines.size} items", color = Anylo.colors.text2)
+                    }.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(h.label, fontWeight = FontWeight.SemiBold)
+                        h.createdByName?.let { Text("Held by $it", color = Anylo.colors.text2, style = MaterialTheme.typography.bodySmall) }
                     }
+                    Text("$n item${if (n == 1) "" else "s"}", color = Anylo.colors.text2)
                 }
             }
-        })
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -92,7 +92,7 @@ fun BusinessCard(app: AppState, shop: Shop, button: String, onSaved: (Shop) -> U
         AnyloField("Address", address, { address = it })
         AnyloField("City", city, { city = it })
         AnyloField("PIN code", pin, { pin = it.filter(Char::isDigit).take(6) }, keyboard = KeyboardType.Number)
-        AnyloField("UPI ID", upi, { upi = it.trim() }, enabled = owner, hint = if (owner) "Used for the payment QR on bills." else "Only the owner can change this.")
+        AnyloField("UPI ID", upi, { upi = it.trim() }, enabled = owner, hint = if (owner) "Shows a payment QR with the bill amount at checkout." else "Only the owner can change this.")
         Text("State: ${shop.stateName}", color = Anylo.colors.text2)
         PrimaryButton(button, loading = busy, enabled = address.isNotBlank() && pin.length == 6 && city.isNotBlank(), onClick = {
             scope.launch {
