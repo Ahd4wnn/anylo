@@ -3,6 +3,7 @@ import { useAuth } from "@/features/auth/store";
 import { useShop } from "@/features/shop/api";
 import { PageHeader } from "@/ui/primitives";
 import { BusinessForm, LogoAndUpiForm, TaxForm } from "./forms";
+import { PrinterPanel } from "@/features/printer/PrinterPanel";
 import { SecurityPanel } from "./SecurityPanel";
 import { StaffPanel } from "./StaffPanel";
 
@@ -19,6 +20,7 @@ export function SettingsPage() {
   const tabs = [
     ...(can("shop.settings") ? [{ to: "business", label: "Business" }, { to: "tax", label: "GST" }] : []),
     ...(can("staff.salespeople") ? [{ to: "staff", label: "Staff" }] : []),
+    { to: "printing", label: "Printing" },
     { to: "security", label: "Security" },
   ];
   return (
@@ -37,6 +39,7 @@ export function SettingsPage() {
         <Route path="business" element={<ShopSettings section="business" />} />
         <Route path="tax" element={<ShopSettings section="tax" />} />
         <Route path="staff" element={<StaffPanel />} />
+        <Route path="printing" element={<PrinterPanel />} />
         <Route path="security" element={<SecurityPanel />} />
       </Routes>
     </>
