@@ -515,9 +515,25 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
                         AnyloField("Cash received (optional)", received, { received = it }, keyboard = KeyboardType.Decimal)
                         if (dec(received) > total) Text("Give back ${rupees(dec(received) - total)}", style = MaterialTheme.typography.titleMedium, color = Anylo.colors.success)
                     }
-                    if (mode == "split") Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf("cash", "upi", "card").forEach { k -> AnyloField(k.uppercase(), split[k].orEmpty(), { v -> split = split + (k to v) }, Modifier.weight(1f), keyboard = KeyboardType.Decimal) }
+                    if (mode == "split") {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf("cash", "upi").forEach { k -> AnyloField(k.uppercase(), split[k].orEmpty(), { v -> split = split + (k to v) }, Modifier.weight(1f), keyboard = KeyboardType.Decimal) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
+                            AnyloField("CARD", split["card"].orEmpty(), { v -> split = split + ("card" to v) }, Modifier.weight(1f), keyboard = KeyboardType.Decimal)
+                            // Whatever isn't paid now is the due; filled in, never typed, so the parts always add up to the bill.
+                            Column(Modifier.weight(1f)) {
+                                Text("DUE", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.height(6.dp))
+                                Text(money(due.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()),
+                                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(if (due.signum() > 0) Anylo.colors.warningSoft else Anylo.colors.surface2).padding(16.dp),
+                                    color = if (due.signum() > 0) Anylo.colors.warning else Anylo.colors.text3, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
+                    if ((mode == "due" || mode == "split") && due.signum() > 0)
+                        AnyloField("Customer mobile (needed for due)", cart.state.customer.phone,
+                            { v -> cart.update { it.copy(customer = it.customer.copy(phone = v.filter(Char::isDigit).take(10))) } }, keyboard = KeyboardType.Phone)
                     if (mode == "upi" || mode == "card") AnyloField(if (mode == "upi") "UPI reference (optional)" else "Card last 4 / approval code (optional)", ref, { ref = it })
                     if (upiAmount.signum() > 0) {
                         val vpa = shop?.upi
@@ -533,7 +549,7 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
                         }
                     }
                     if ((mode == "due" || mode == "split") && due.signum() > 0)
-                        Text("${rupees(due)} will be kept as due" + if (hasPhone) " on ${cart.state.customer.phone}" else ". Add the customer's mobile number first.",
+                        Text("${rupees(due)} will be kept as due" + if (hasPhone) " on ${cart.state.customer.phone}" else ". Enter the customer's mobile number above.",
                             color = if (hasPhone) Anylo.colors.warning else Anylo.colors.danger)
                     if (over) Text("Payments are more than the bill. Enter the bill amount; change is shown separately.", color = Anylo.colors.danger)
                     PrimaryButton(if (due.signum() > 0 && mode != "cash") "Save with ${rupees(due)} due" else "Save bill", { submit(null) },

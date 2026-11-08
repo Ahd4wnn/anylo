@@ -145,13 +145,26 @@ export function PaymentSheet({ open, total, onClose, buildBody }: {
             </label>
           )}
           {mode === "split" && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {(["cash", "upi", "card"] as const).map((k) => (
                 <label key={k}><span className="mb-1 block text-xs font-semibold uppercase text-text-2">{k}</span>
                   <input value={split[k]} onChange={(e) => setSplit((s) => ({ ...s, [k]: e.target.value }))} inputMode="decimal"
                     className="tnum h-11 w-full rounded-lg border border-border-strong bg-surface px-2" /></label>
               ))}
+              {/* Whatever isn't paid now is the due; filled in, never typed, so the parts always add up to the bill. */}
+              <div><span className="mb-1 block text-xs font-semibold uppercase text-text-2">Due</span>
+                <output aria-live="polite" className={`tnum flex h-11 items-center rounded-lg border px-2 ${due > 0 ? "border-warning bg-warning-soft font-semibold text-warning" : "border-border bg-surface-2 text-text-3"}`}>
+                  {r2(due)}
+                </output></div>
             </div>
+          )}
+          {due > 0 && (mode === "due" || mode === "split") && (
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold">Customer mobile (needed for due)</span>
+              <input value={cart.customer.phone} inputMode="numeric" autoComplete="tel" placeholder="98xxxxxxxx"
+                onChange={(e) => cart.set({ customer: { ...cart.customer, phone: e.target.value.replace(/\D/g, "").slice(0, 10) } })}
+                className="tnum h-11 w-full rounded-lg border border-border-strong bg-surface px-3" />
+            </label>
           )}
           {(mode === "upi" || mode === "card") && (
             <label className="block">
@@ -167,7 +180,7 @@ export function PaymentSheet({ open, total, onClose, buildBody }: {
           ) : <p className="rounded-lg bg-warning-soft px-4 py-3 text-sm text-warning">Add your UPI ID in Settings → Business to show a payment QR here.</p>)}
           {(mode === "due" || mode === "split") && due > 0 && (
             <p className={`rounded-lg px-4 py-3 text-sm ${hasPhone ? "bg-warning-soft text-warning" : "bg-danger-soft text-danger"}`}>
-              {formatINR(r2(due), { always: true })} will be kept as due{hasPhone ? ` on ${cart.customer.phone}` : ". Add the customer's mobile number first."}
+              {formatINR(r2(due), { always: true })} will be kept as due{hasPhone ? ` on ${cart.customer.phone}` : ". Enter the customer's mobile number above."}
             </p>
           )}
           {over && <p className="text-sm text-danger">Payments are more than the bill. Enter the bill amount; change is shown separately.</p>}
