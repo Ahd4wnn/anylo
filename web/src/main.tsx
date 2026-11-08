@@ -11,6 +11,9 @@ import { ForceChangePage, ForgotPage, ResetPage } from "@/features/auth/Password
 import { SignupPage } from "@/features/auth/SignupPage";
 import { useAuth } from "@/features/auth/store";
 import { OnboardingPage } from "@/features/onboarding/OnboardingPage";
+import { ItemsPage } from "@/features/items/ItemsPage";
+import { ProductEditor } from "@/features/items/ProductEditor";
+import { ImportPage, LabelsPage, StockPage } from "@/features/items/ToolsPages";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import "@/styles/index.css";
 
@@ -44,6 +47,12 @@ const router = createBrowserRouter([
     element: <Gate need="ready"><AppShell /></Gate>,
     children: [
       { index: true, element: <HomePage /> },
+      { path: "items", element: <ItemsPage /> },
+      { path: "items/new", element: <ProductEditor /> },
+      { path: "items/import", element: <ImportPage /> },
+      { path: "items/labels", element: <LabelsPage /> },
+      { path: "items/stock", element: <StockPage /> },
+      { path: "items/:id", element: <ProductEditor /> },
       { path: "settings/*", element: <SettingsPage /> },
     ],
   },

@@ -11,7 +11,7 @@ import { Button } from "@/ui/Button";
 import { Logo } from "@/ui/Logo";
 import { Section } from "@/ui/primitives";
 
-const STEPS = ["Business", "GST", "Logo & UPI", "Staff", "Done"];
+const STEPS = ["Business", "GST", "Logo & UPI", "Staff", "Items", "Done"];
 
 export function OnboardingPage() {
   const { data: shop } = useShop();
@@ -19,6 +19,13 @@ export function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [added, setAdded] = useState<string[]>([]);
+  const [starter, setStarter] = useState<number | null>(null);
+  const [addingStarter, setAddingStarter] = useState(false);
+  async function addStarter() {
+    setAddingStarter(true);
+    try { setStarter((await api<{ added: number }>("/shop/starter-products", { method: "POST" })).added); }
+    finally { setAddingStarter(false); }
+  }
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   // Managers can't edit GST, so they skip that step.
   const skipTax = !can("shop.tax_profile");
@@ -37,12 +44,20 @@ export function OnboardingPage() {
       {added.length > 0 && <p className="rounded-lg bg-success-soft px-4 py-3 text-sm text-success">Added: {added.join(", ")}. Their login details are in Settings → Staff.</p>}
       <AddStaffForm onCreated={(c) => setAdded((a) => [...a, `${c.full_name} (password ${c.temporary_password})`])} />
     </Section>,
+    <Section key="p" title="Add your items" description="Start with common items for your type of shop, or import your own list. You can do this later too."
+      footer={<Button size="md" onClick={next}>{starter ? "Continue" : "Skip for now"}</Button>}>
+      {starter !== null && <p className="rounded-lg bg-success-soft px-4 py-3 text-sm text-success">Added {starter} starter items at ₹0. Set their prices in Items.</p>}
+      <div className="flex flex-wrap gap-3">
+        <Button variant="secondary" size="md" loading={addingStarter} onClick={() => void addStarter()}>Add starter items</Button>
+        <Button variant="ghost" size="md" onClick={() => navigate("/app/items/import")}>Import a spreadsheet instead</Button>
+      </div>
+    </Section>,
     <Section key="d" title="Your shop is ready" footer={<Button size="lg" loading={finish.isPending} onClick={() => finish.mutate()}>Go to my shop</Button>}>
       <div className="flex items-start gap-4">
         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary-soft"><PartyPopper className="h-6 w-6 text-brand" aria-hidden /></span>
         <div className="space-y-2 text-text-2">
           <p><span className="font-semibold text-text">{shop.name}</span> is set up, {me?.user.full_name.split(" ")[0]}.</p>
-          <p>Next you'll add your products and make your first bill. You can change anything later in Settings.</p>
+          <p>Next you'll make your first bill. You can change anything later in Settings.</p>
         </div>
       </div>
     </Section>,

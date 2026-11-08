@@ -8,7 +8,7 @@ import { Badge, Toaster } from "@/ui/primitives";
 const NAV = [
   { to: "/app", label: "Home", icon: Home, end: true },
   { to: "/pos", label: "Sell", icon: ShoppingCart, soon: true },
-  { to: "/app/items", label: "Items", icon: Package, soon: true },
+  { to: "/app/items", label: "Items", icon: Package },
   { to: "/app/customers", label: "Customers", icon: Users, soon: true },
   { to: "/app/reports", label: "Reports", icon: BarChart3, soon: true },
   { to: "/app/settings", label: "Settings", icon: Settings },

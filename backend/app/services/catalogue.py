@@ -185,7 +185,7 @@ def list_products(
     if low_stock:
         where.append(
             "p.track_stock AND EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id = p.id"
-            " AND v.is_active AND v.stock_qty <= v.reorder_level)"
+            " AND v.is_active AND v.reorder_level > 0 AND v.stock_qty <= v.reorder_level)"
         )
     cond = " AND ".join(where)  # fragments above are constants; values are bound
     total = _q(db, f"SELECT count(*) FROM products p WHERE {cond}", **params).scalar_one()

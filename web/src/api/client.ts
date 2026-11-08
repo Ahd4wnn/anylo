@@ -44,7 +44,8 @@ async function tryRefresh(): Promise<RefreshResult> {
   return refreshing;
 }
 
-export async function api<T>(path: string, init: RequestInit & { json?: unknown } = {}, retry = true): Promise<T> {
+/** `blob: true` returns the response body as a Blob (file downloads); errors still parse as JSON. */
+export async function api<T>(path: string, init: RequestInit & { json?: unknown; blob?: boolean } = {}, retry = true): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.json !== undefined) headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
@@ -63,7 +64,16 @@ export async function api<T>(path: string, init: RequestInit & { json?: unknown 
     if (r === "ok") return api<T>(path, init, false);
     if (r === "invalid") channel?.postMessage("logout");
   }
+  if (init.blob && res.ok) return (await res.blob()) as T;
   return parse(res) as Promise<T>;
+}
+
+/** Save a Blob as a file. */
+export function saveFile(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export const onRemoteLogout = (fn: () => void) => channel?.addEventListener("message", (e) => e.data === "logout" && fn());

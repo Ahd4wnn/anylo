@@ -39,7 +39,7 @@ export function BusinessForm({ shop, onSaved, submitLabel = "Save changes" }: { 
         <FormError message={error} />
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Shop name" name="name" defaultValue={shop.name} required />
-          <Select label="Type of shop" name="business_type" defaultValue={shop.business_type} options={ref.data?.business_types ?? []} />
+          <Select key={ref.data ? "ready" : "loading"} label="Type of shop" name="business_type" defaultValue={shop.business_type} options={ref.data?.business_types ?? []} />
           <Field label="Shop phone" name="phone" defaultValue={shop.phone ?? ""} inputMode="numeric" maxLength={10} />
           <Field label="Shop email" name="email" type="email" defaultValue={shop.email ?? ""} />
         </div>

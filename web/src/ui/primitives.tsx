@@ -49,7 +49,8 @@ export function Toggle({ checked, onChange, label, hint }: { checked: boolean; o
       <span><span className="block font-medium text-text">{label}</span>{hint && <span className="text-sm text-text-2">{hint}</span>}</span>
       <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)}
         className={`relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition-colors duration-200 ${checked ? "bg-primary" : "bg-border-strong"}`}>
-        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-e1 transition-transform duration-200 ease-brand ${checked ? "translate-x-[22px]" : "translate-x-0.5"}`} />
+        {/* Anchored at left: 2px; on = 48 track - 24 knob - 2×2 inset = 20px travel. */}
+        <span className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow-e1 transition-transform duration-200 ease-brand ${checked ? "translate-x-5" : "translate-x-0"}`} />
       </button>
     </label>
   );
