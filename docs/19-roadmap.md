@@ -100,9 +100,9 @@ The commit message hint in `code` style is the suggested Conventional Commit sco
 - [ ] `test(api)`: concurrency numbering + idempotency
 - [ ] `feat(api)`: invoices list/detail, edit with diff + audit, cancel
 - [ ] `feat(api)`: held bills
-- [ ] `feat(api)`: approvals + manager PIN
+- [x] `feat(api)`: manager PIN on the bill (approvals inbox for remote approval moves to M4)
 - [ ] `feat(api)`: receipt model endpoint
-- [ ] `feat(api)`: PDF invoice (WeasyPrint templates A4/A5, Indic fonts)
+- [x] `feat(api)`: PDF invoice (A4, reportlab with a bundled Unicode font; WeasyPrint dropped to avoid native deps on the VPS)
 - [ ] `feat(api)`: public invoice token + page data
 
 **Web POS**
@@ -131,7 +131,7 @@ The commit message hint in `code` style is the suggested Conventional Commit sco
 - [ ] `feat(android)`: ML Kit scanning
 - [ ] `feat(android)`: HID scanner
 - [ ] `feat(android)`: voice
-- [ ] `feat(android)`: held bills + "not saved" recovery
+- [x] `feat(android)`: held bills (server); cart saved to a file and the idempotency key kept until save, so a dropped connection never loses or doubles a bill. Offline "Save all" queue moves to M4
 - [ ] `feat(android)`: receipt renderer update (GST layout)
 - [ ] `feat(android)`: Bluetooth SPP + USB printing
 - [ ] `feat(android)`: sales list + detail + share PDF

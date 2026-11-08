@@ -121,3 +121,9 @@ These mirror the web feature list, phone-optimised:
   - POS happy path (Compose UI + MockWebServer)
   - locale resources present for every key
 - Contract test: DTOs deserialize every example in `openapi.snapshot.json`.
+
+## M3 notes
+
+- POS on phones is two views (items grid → bill). Dispatched/inter-state bills are web-only for now; Android bills are counter sales.
+- UPI and receipt QR codes use ZXing core (encode only). Snap & Find uses the system camera (`TakePicturePreview`), so no camera permission.
+- HID scanners type into the search box; Enter adds the scanned code.
