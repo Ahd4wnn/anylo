@@ -11,9 +11,9 @@ Kotlin + Jetpack Compose. This is the main counter device for most shops: a chea
 | UI | Compose BOM, Material 3 (themed with Anylo tokens; light + dark), type-safe Navigation-Compose (`@Serializable` routes) |
 | DI | Manual: one `Session` in `AnyloApp`, passed to an app-level `AppState` ViewModel. Hilt was dropped in M1 to keep builds light (no annotation processing); revisit if the graph grows past a handful of objects |
 | Network | Retrofit + OkHttp + kotlinx.serialization (`ignoreUnknownKeys`, `explicitNulls=false`) |
-| Local | DataStore (prefs, cart, held-bill mirror), Room (product cache for fast offline search, held bills) |
+| Local | SharedPreferences/encrypted prefs; catalogue cached as a JSON file (`ItemScreens.kt`) for instant, offline lists. Room was deferred to keep the build free of annotation processing; revisit if offline billing needs queries |
 | Security | EncryptedSharedPreferences/Keystore for tokens (ported `TokenStore`, lazily initialised) |
-| Camera / scan | CameraX + ML Kit Barcode Scanning (bundled model) |
+| Camera / scan | Google code scanner (`play-services-code-scanner`): Google's UI, no camera permission or camera code in the app. CameraX + ML Kit only if continuous POS scanning needs it (M3) |
 | Images | Coil |
 | QR | ZXing core (local) |
 | Charts | Vico (Compose charts), themed |

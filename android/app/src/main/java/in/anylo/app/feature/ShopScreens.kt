@@ -177,6 +177,7 @@ fun Shell(app: AppState, me: Me) {
             when (tab) {
                 Tab.Home -> HomeScreen(app, me)
                 Tab.Settings -> SettingsScreen(app, me)
+                Tab.Items -> ItemsScreen(app)
                 else -> Soon(tab.label)
             }
         }
@@ -228,10 +229,14 @@ fun HomeScreen(app: AppState, me: Me) {
 
 @Composable
 fun SettingsScreen(app: AppState, me: Me) {
+    val printer = (androidx.compose.ui.platform.LocalContext.current.applicationContext as `in`.anylo.app.AnyloApp).printer
+    var showPrinter by remember { mutableStateOf(false) }
+    if (showPrinter) { PrinterScreen(printer) { showPrinter = false }; return }
     var shop by remember { mutableStateOf<Shop?>(null) }
     LaunchedEffect(me.activeShopId) { if (app.can("shop.settings")) shop = runCatching { app.session.api.shop() }.getOrNull() }
     Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Settings", style = MaterialTheme.typography.headlineMedium)
+        SecondaryButton("Printer setup", { showPrinter = true }, Modifier.fillMaxWidth())
         shop?.let { s ->
             BusinessCard(app, s, "Save changes") { shop = it }
             GstCard(app, s, "Save GST settings") { shop = it }

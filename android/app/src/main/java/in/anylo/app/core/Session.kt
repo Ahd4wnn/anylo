@@ -77,7 +77,7 @@ class Session(private val store: TokenStore) {
         }
     }
 
-    val api: AnyloApi = Retrofit.Builder()
+    private val retrofit: Retrofit = Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
         .client(
             OkHttpClient.Builder()
@@ -86,7 +86,8 @@ class Session(private val store: TokenStore) {
         )
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
-        .create(AnyloApi::class.java)
+    val api: AnyloApi = retrofit.create(AnyloApi::class.java)
+    val catalogue: CatalogueApi = retrofit.create(CatalogueApi::class.java)
 
     /** true = new tokens; false = session really invalid (logged out). Network errors throw. */
     suspend fun refresh(): Boolean {

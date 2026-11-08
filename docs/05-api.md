@@ -65,14 +65,16 @@ Permission keys refer to `03-roles-permissions.md`. Abbreviations: **O** owner, 
 | GET | /products | O M S | `q, category_id, barcode, low_stock, include_archived, cursor` |
 | GET | /products/lookup | O M S | `?barcode=` or `?sku=` → one variant (scanner path, < 50 ms) |
 | GET | /products/{id} | O M S | With variants, stock |
+| PUT | /products/{id} | O M | Full replace incl. variants; variants left out are deactivated (kept for history); stock never changes here |
+| POST | /barcodes/generate | O M | Next internal EAN-13 (prefix 2) for this shop |
+| POST | /shop/starter-products | O M | Adds the business type's starter items at ₹0 (repeatable) |
 | POST | /products | O M | With variants |
 | PATCH | /products/{id} | O M | |
 | DELETE | /products/{id} | O M | Archive |
 | POST | /products/{id}/restore | O M | |
 | POST / DELETE | /products/{id}/photo | O M | |
 | GET | /products/import/template | O M | XLSX template (static route declared before `/{id}`) |
-| POST | /products/import | O M | CSV/XLSX → preview with row errors (dry run) |
-| POST | /products/import/commit | O M | Commit the previewed import |
+| POST | /products/import?dry_run=true\|false | O M | CSV/XLSX import. The dry run performs the real import inside a rolled-back savepoint, so the preview equals the result; `dry_run=false` commits only if no row has errors |
 | POST | /products/photos/zip | O M | Bulk photos matched by SKU or name |
 | GET | /products/export | O M | XLSX |
 | POST | /products/labels | O M | Barcode label PDF for selected variants (A4 sheets or 50×25 mm roll) |

@@ -93,3 +93,40 @@ interface AnyloApi {
     @PATCH("shop/staff/{id}") suspend fun patchStaff(@Path("id") id: String, @Body b: StaffPatch): Staff
     @POST("shop/staff/{id}/reset-password") suspend fun resetStaff(@Path("id") id: String): Staff
 }
+
+// --- catalogue (backend/app/schemas/catalogue.py) ---
+
+@Serializable data class VariantDto(
+    val id: String? = null, val name: String? = null, val sku: String? = null, val barcode: String? = null,
+    val mrp: String? = null, @SerialName("sale_price") val salePrice: String = "0", @SerialName("cost_price") val costPrice: String = "0",
+    @SerialName("reorder_level") val reorderLevel: String = "0", @SerialName("stock_qty") val stockQty: String = "0",
+    @SerialName("opening_stock") val openingStock: String? = null,
+)
+@Serializable data class ProductDto(
+    val id: String = "", val name: String, @SerialName("category_id") val categoryId: String? = null,
+    @SerialName("category_name") val categoryName: String? = null, val brand: String? = null,
+    @SerialName("hsn_code") val hsnCode: String? = null, @SerialName("tax_rate_id") val taxRateId: String? = null,
+    @SerialName("tax_rate") val taxRate: String? = null, @SerialName("unit_code") val unitCode: String = "NOS",
+    @SerialName("track_stock") val trackStock: Boolean = true, @SerialName("thumb_url") val thumbUrl: String? = null,
+    @SerialName("missing_tax_info") val missingTaxInfo: Boolean = false, val variants: List<VariantDto> = emptyList(),
+)
+@Serializable data class ProductPage(val items: List<ProductDto>, @SerialName("next_cursor") val nextCursor: String? = null, val total: Int)
+@Serializable data class LookupDto(val product: ProductDto, val variant: VariantDto)
+@Serializable data class CategoryDto(val id: String, val name: String)
+@Serializable data class UnitDto(val code: String, val label: String, @SerialName("allows_decimal") val allowsDecimal: Boolean)
+@Serializable data class RateDto(val id: String, val label: String, val rate: String, val kind: String)
+@Serializable data class AdjustReq(@SerialName("variant_id") val variantId: String, val mode: String, val qty: String, val kind: String = "adjustment", val reason: String? = null)
+@Serializable data class BarcodeDto(val barcode: String)
+
+interface CatalogueApi {
+    @GET("products") suspend fun products(@retrofit2.http.Query("q") q: String?, @retrofit2.http.Query("low_stock") low: Boolean = false, @retrofit2.http.Query("limit") limit: Int = 200): ProductPage
+    @GET("products/{id}") suspend fun product(@Path("id") id: String): ProductDto
+    @GET("products/lookup") suspend fun lookup(@retrofit2.http.Query("code") code: String): LookupDto
+    @POST("products") suspend fun create(@Body b: ProductDto): ProductDto
+    @PUT("products/{id}") suspend fun update(@Path("id") id: String, @Body b: ProductDto): ProductDto
+    @GET("categories") suspend fun categories(): List<CategoryDto>
+    @GET("units") suspend fun units(): List<UnitDto>
+    @GET("gst-rates") suspend fun rates(): List<RateDto>
+    @POST("stock/adjustments") suspend fun adjust(@Body b: AdjustReq): VariantDto
+    @POST("barcodes/generate") suspend fun generateBarcode(): BarcodeDto
+}
