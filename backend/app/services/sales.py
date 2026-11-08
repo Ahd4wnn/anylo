@@ -437,24 +437,51 @@ def _write_payments(
     return paid, grand - paid
 
 
-def _next_number(db: Session, ctx: ShopCtx, fy: str) -> tuple[str, int, str]:
+def next_number(
+    db: Session, ctx: ShopCtx, fy: str, kind: str = "sale", default_prefix: str = "INV"
+) -> tuple[str, int, str]:
+    """Gapless number for a sale, credit note or receipt series."""
     series_key = ctx.gstin or str(ctx.id)  # uniqueness is per GSTIN per FY (CA finding F10)
+    prefix = (
+        default_prefix
+        if kind != "sale"
+        else str(ctx.settings.get("invoice_prefix", default_prefix))
+    )
     _q(
         db,
-        "INSERT INTO doc_series (shop_id, kind, fy, prefix) VALUES (:s, 'sale', :fy, :p) ON CONFLICT DO NOTHING",
+        "INSERT INTO doc_series (shop_id, kind, fy, prefix) VALUES (:s, :k, :fy, :p) ON CONFLICT DO NOTHING",
         s=ctx.id,
+        k=kind,
         fy=fy,
-        p=str(ctx.settings.get("invoice_prefix", "INV"))[:4],
+        p=prefix[:4],
     )
-    # Row lock serialises concurrent checkouts; a rolled-back checkout returns its number (gapless).
+    # Row lock serialises concurrent writers; a rolled-back transaction returns its number (gapless).
     row = _q(
         db,
-        "UPDATE doc_series SET next_seq = next_seq + 1 WHERE shop_id = :s AND kind = 'sale' AND fy = :fy"
+        "UPDATE doc_series SET next_seq = next_seq + 1 WHERE shop_id = :s AND kind = :k AND fy = :fy"
         " RETURNING next_seq - 1 AS seq, prefix",
         s=ctx.id,
+        k=kind,
         fy=fy,
     ).one()
     return f"{row.prefix}/{fy}/{row.seq:05d}", row.seq, series_key
+
+
+def _credit_limit(db: Session, ctx: ShopCtx, phone: str, new_due: Decimal) -> None:
+    """A salesperson can't push a customer past the credit limit the owner set; owners and managers decide themselves."""
+    c = _q(
+        db,
+        "SELECT c.credit_limit, b.balance FROM customers c JOIN customer_balances b ON b.customer_id = c.id"
+        " WHERE c.shop_id = :s AND c.phone = :p AND c.deleted_at IS NULL",
+        s=ctx.id,
+        p=phone,
+    ).first()
+    if c and c.credit_limit is not None and c.balance + new_due > c.credit_limit:
+        raise AppError(
+            "invoice.credit_limit",
+            f"This would take the customer's dues past their limit of ₹{c.credit_limit:,.2f}. Ask the owner or manager.",
+            422,
+        )
 
 
 def checkout(db: Session, actor: Actor, body: CheckoutIn) -> tuple[dict[str, Any], bool]:
@@ -477,11 +504,13 @@ def checkout(db: Session, actor: Actor, body: CheckoutIn) -> tuple[dict[str, Any
         raise AppError(
             "invoice.due_needs_customer", "Add the customer's mobile number to keep money due.", 422
         )
+    if paid < p.out.grand_total and actor.role == "salesperson":
+        _credit_limit(db, ctx, str(body.customer and body.customer.phone), p.out.grand_total - paid)
     try:
         with db.begin_nested():
             customer_id = _customer(db, ctx, body, p.buyer_state)
             fy = fy_label(_today(ctx))
-            number, seq, series_key = _next_number(db, ctx, fy)
+            number, seq, series_key = next_number(db, ctx, fy)
             c = body.customer
             o = p.out
             inv_id: UUID = _q(
@@ -622,10 +651,22 @@ def _guard_change(actor: Actor, ctx: ShopCtx, inv: Any, *, editing: bool) -> Non
         )
 
 
+def _no_returns(db: Session, inv: Any) -> None:
+    if _q(
+        db, "SELECT 1 FROM credit_notes WHERE original_invoice_id = :i LIMIT 1", i=inv.id
+    ).first():
+        raise AppError(
+            "invoice.has_returns",
+            "Items on this bill were returned, so it can't be changed or cancelled.",
+            409,
+        )
+
+
 def cancel(db: Session, actor: Actor, invoice_id: UUID, reason: str) -> dict[str, Any]:
     ctx = shop_ctx(db, actor)
     inv = _invoice_row(db, actor, invoice_id)
     _guard_change(actor, ctx, inv, editing=False)
+    _no_returns(db, inv)
     _reverse(db, actor, inv, f"Cancelled {inv.number}")
     _q(
         db,
@@ -652,6 +693,7 @@ def edit(db: Session, actor: Actor, invoice_id: UUID, body: CheckoutIn) -> dict[
     ctx = shop_ctx(db, actor)
     inv = _invoice_row(db, actor, invoice_id)
     _guard_change(actor, ctx, inv, editing=True)
+    _no_returns(db, inv)
     p = price_cart(db, actor, ctx, body)
     paid = sum((pm.amount for pm in body.payments), ZERO)
     if paid < p.out.grand_total and not (body.customer and body.customer.phone):
