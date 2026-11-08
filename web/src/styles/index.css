@@ -4,7 +4,8 @@
 @tailwind utilities;
 
 @layer base {
-  html { font-family: theme(fontFamily.sans); -webkit-font-smoothing: antialiased; }
+  /* native scrollbars and date pickers follow the theme */
+  html { color-scheme: light dark; font-family: theme(fontFamily.sans); -webkit-font-smoothing: antialiased; }
   body { @apply bg-bg text-text; font-feature-settings: "cv11", "ss01"; }
   :focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; }
   .tnum { font-variant-numeric: tabular-nums; }

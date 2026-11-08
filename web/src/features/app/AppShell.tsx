@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, Home, LogOut, Package, Settings, ShoppingCart, Store, Users } from "lucide-react";
+import { BarChart3, ChevronDown, Home, LogOut, Package, ReceiptText, Settings, ShoppingCart, Store, Users } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/features/auth/store";
@@ -7,7 +7,8 @@ import { Badge, Toaster } from "@/ui/primitives";
 
 const NAV = [
   { to: "/app", label: "Home", icon: Home, end: true },
-  { to: "/pos", label: "Sell", icon: ShoppingCart, soon: true },
+  { to: "/pos", label: "Sell", icon: ShoppingCart },
+  { to: "/app/sales", label: "Sales", icon: ReceiptText },
   { to: "/app/items", label: "Items", icon: Package },
   { to: "/app/customers", label: "Customers", icon: Users, soon: true },
   { to: "/app/reports", label: "Reports", icon: BarChart3, soon: true },
@@ -92,7 +93,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children ?? <Outlet />}</main>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface lg:hidden" aria-label="Main">
-        {NAV.filter((n) => n.label !== "Customers").map((n) => <NavItem key={n.to} {...n} compact />)}
+        {NAV.filter((n) => !["Customers", "Reports"].includes(n.label)).map((n) => <NavItem key={n.to} {...n} compact />)}
       </nav>
       <Toaster />
     </div>

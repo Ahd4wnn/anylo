@@ -10,6 +10,8 @@ import { Button } from "@/ui/Button";
 import { Field } from "@/ui/Field";
 import { Select } from "@/ui/Select";
 import { Section, Toggle, useToast } from "@/ui/primitives";
+import { upiUri } from "@/features/pos/api";
+import { UpiQr } from "@/features/pos/PaymentSheet";
 
 type Option = { value: string; label: string };
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
@@ -174,6 +176,12 @@ export function LogoAndUpiForm({ shop, onSaved, submitLabel = "Save" }: { shop: 
             hint={canUpi ? undefined : "Only the owner can change payment details."} />
           <Field label="Name shown on UPI" name="upi_payee_name" defaultValue={shop.upi_payee_name ?? shop.name} disabled={!canUpi} />
         </div>
+        {shop.upi_vpa && (
+          <div className="flex items-center gap-4 rounded-lg bg-tint p-4">
+            <UpiQr uri={upiUri(shop.upi_vpa, shop.upi_payee_name || shop.name, "1", "Anylo test")} size={110} />
+            <p className="text-sm text-text-2">Test it: scan with any UPI app. It should show <span className="font-semibold text-text">{shop.upi_payee_name || shop.name}</span> and ₹1. At billing, the QR fills in the exact bill amount.</p>
+          </div>
+        )}
       </Section>
     </form>
   );

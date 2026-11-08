@@ -14,6 +14,8 @@ import { OnboardingPage } from "@/features/onboarding/OnboardingPage";
 import { ItemsPage } from "@/features/items/ItemsPage";
 import { ProductEditor } from "@/features/items/ProductEditor";
 import { ImportPage, LabelsPage, StockPage } from "@/features/items/ToolsPages";
+import { PosPage } from "@/features/pos/PosPage";
+import { InvoiceDetail, PublicInvoicePage, SalesPage } from "@/features/pos/SalesPages";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import "@/styles/index.css";
 
@@ -40,6 +42,8 @@ const router = createBrowserRouter([
   { path: "/signup", element: <Gate need="anonymous"><SignupPage /></Gate> },
   { path: "/forgot", element: <Gate need="anonymous"><ForgotPage /></Gate> },
   { path: "/reset/:token", element: <ResetPage /> },
+  { path: "/i/:token", element: <PublicInvoicePage /> },
+  { path: "/pos", element: <Gate need="ready"><PosPage /></Gate> },
   { path: "/change-password", element: <Gate need="ready"><ForceChangePage /></Gate> },
   { path: "/welcome", element: <Gate need="ready"><OnboardingPage /></Gate> },
   {
@@ -53,6 +57,8 @@ const router = createBrowserRouter([
       { path: "items/labels", element: <LabelsPage /> },
       { path: "items/stock", element: <StockPage /> },
       { path: "items/:id", element: <ProductEditor /> },
+      { path: "sales", element: <SalesPage /> },
+      { path: "sales/:id", element: <InvoiceDetail /> },
       { path: "settings/*", element: <SettingsPage /> },
     ],
   },
