@@ -8,6 +8,7 @@ from app.deps import DB, CurrentActor, require
 from app.schemas.backoffice import (
     AttendanceIn,
     BorrowingIn,
+    CategoryNameIn,
     CloseIn,
     ExpenseIn,
     LabourPayIn,
@@ -28,6 +29,18 @@ def need(p: str) -> list[Any]:
 @router.get("/expenses/categories", dependencies=need("expense.create"))
 def expense_categories(actor: CurrentActor, db: DB) -> Any:
     return backoffice.categories(db, actor)
+
+
+@router.post("/expenses/categories", status_code=201, dependencies=need("expense.manage"))
+def add_expense_category(data: CategoryNameIn, actor: CurrentActor, db: DB) -> Any:
+    return backoffice.add_category(db, actor, data.name)
+
+
+@router.delete(
+    "/expenses/categories/{category_id}", status_code=204, dependencies=need("expense.manage")
+)
+def delete_expense_category(category_id: UUID, actor: CurrentActor, db: DB) -> None:
+    backoffice.delete_category(db, actor, category_id)
 
 
 @router.get("/expenses", dependencies=need("expense.create"))

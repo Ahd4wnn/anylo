@@ -3,6 +3,8 @@ package `in`.anylo.app.feature
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
@@ -103,12 +105,17 @@ private fun NewPurchaseScreen(app: AppState, onDone: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Picker("Supplier", listOf(Option("", "Choose")) + suppliers?.items.orEmpty().map { Option(it.id, it.name) }, supplierId) { supplierId = it }
             }
-            TextButton(onClick = { addingSupplier = true }) { Text("New") }
+            // Same 56dp height as the field, bottom-aligned, so the button sits level with the box (not its label).
+            androidx.compose.material3.OutlinedButton(onClick = { addingSupplier = true }, Modifier.height(56.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Anylo.colors.border)) {
+                Text("New", fontWeight = FontWeight.SemiBold)
+            }
         }
         AnyloField("Their bill no. (optional)", billNo, { billNo = it })
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AnyloField("Search items", q, { q = it }, Modifier.weight(1f))
-            IconButton(onClick = {
+            androidx.compose.material3.OutlinedIconButton(modifier = Modifier.size(56.dp), shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Anylo.colors.border), onClick = {
                 scanBarcode(ctx, { code ->
                     scope.launch {
                         runCatching { app.session.catalogue.lookup(code) }.onSuccess { r ->

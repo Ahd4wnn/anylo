@@ -158,7 +158,8 @@ function ExpensesPanel() {
   const [from, setFrom] = useState(start);
   const [to, setTo] = useState(todayIso());
   const { data } = useQuery({ queryKey: ["expenses", from, to], queryFn: () => api<ExpensePage>(`/expenses?from=${from}&to=${to}`) });
-  const cats = useQuery({ queryKey: ["expense-categories"], queryFn: () => api<{ id: string; name: string }[]>("/expenses/categories"), staleTime: 600_000 });
+  const cats = useQuery({ queryKey: ["expense-categories"], queryFn: () => api<{ id: string; name: string; is_system: boolean }[]>("/expenses/categories"), staleTime: 600_000 });
+  const [managing, setManaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   async function add(e: FormEvent<HTMLFormElement>) {
@@ -183,14 +184,14 @@ function ExpensesPanel() {
   const [newCat, setNewCat] = useState(false);
   return (
     <div className="space-y-6">
-      <Section title="Add an expense">
+      <Section title="Add an expense" description={can("expense.manage") ? undefined : "Need a new category? Ask the owner to add it."}>
         <form onSubmit={add} className="space-y-3">
           <FormError message={error} />
           <div className="grid gap-3 sm:grid-cols-4">
             <select name="category" required defaultValue="" onChange={(e) => setNewCat(e.target.value === "__new")} aria-label="Category" className={cell}>
               <option value="" disabled>Category</option>
               {cats.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              <option value="__new">+ New category</option>
+              {can("expense.manage") && <option value="__new">+ New category</option>}
             </select>
             {newCat && <input name="new_category" required placeholder="Category name" aria-label="New category" className={cell} />}
             <input name="amount" required inputMode="decimal" placeholder="Amount ₹" aria-label="Amount" className={cell} />
@@ -206,6 +207,7 @@ function ExpensesPanel() {
         </form>
       </Section>
       <div className="flex flex-wrap items-center gap-3">
+        {can("expense.manage") && <Button size="md" variant="secondary" onClick={() => setManaging(true)}>Manage categories</Button>}
         <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} aria-label="From" className={cell} />
         <input type="date" value={to} min={from} max={todayIso()} onChange={(e) => setTo(e.target.value)} aria-label="To" className={cell} />
         {data && <p className="ml-auto font-semibold">Total {rupees(data.total)}</p>}
@@ -227,6 +229,44 @@ function ExpensesPanel() {
           ))}
         </ul>
       ) : <p className="rounded-xl border border-dashed border-border-strong bg-surface p-8 text-center text-text-2">No expenses for these dates.</p>)}
+      <Dialog open={managing} onClose={() => setManaging(false)} title="Expense categories">
+        <CategoryManager categories={cats.data ?? []} />
+      </Dialog>
+    </div>
+  );
+}
+
+function CategoryManager({ categories }: { categories: { id: string; name: string; is_system: boolean }[] }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () => void qc.invalidateQueries({ queryKey: ["expense-categories"] });
+  async function add(e: FormEvent) {
+    e.preventDefault(); setError(null);
+    try { await api("/expenses/categories", { method: "POST", json: { name: name.trim() } }); setName(""); refresh(); }
+    catch (e2) { setError(err(e2, "Couldn't add.")); }
+  }
+  async function remove(id: string) {
+    try { await api(`/expenses/categories/${id}`, { method: "DELETE" }); refresh(); }
+    catch (e2) { setError(err(e2, "Couldn't remove.")); }
+  }
+  return (
+    <div className="space-y-4">
+      <FormError message={error} />
+      <form onSubmit={add} className="flex gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={60} placeholder="New category, e.g. Tea & snacks" aria-label="New category" className={`${cell} flex-1`} />
+        <Button type="submit" size="md" disabled={!name.trim()}>Add</Button>
+      </form>
+      <ul className="divide-y divide-border rounded-lg border border-border">
+        {categories.map((c) => (
+          <li key={c.id} className="flex items-center justify-between px-3 py-2.5">
+            <span>{c.name}</span>
+            {c.is_system ? <span className="text-xs text-text-3">Built-in</span>
+              : <button onClick={() => void remove(c.id)} className="grid h-8 w-8 place-items-center rounded-md text-text-3 hover:text-danger" aria-label={`Remove ${c.name}`}><Trash2 className="h-4 w-4" /></button>}
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm text-text-2">Removing a category keeps it on expenses already saved.</p>
     </div>
   );
 }

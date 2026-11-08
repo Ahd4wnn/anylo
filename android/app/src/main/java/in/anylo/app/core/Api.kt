@@ -240,7 +240,8 @@ interface SalesApi {
     val close: DayCloseDto? = null,
 )
 @Serializable data class CloseReq(@SerialName("counted_cash") val counted: String, val note: String? = null)
-@Serializable data class ExpenseCategory(val id: String, val name: String)
+@Serializable data class ExpenseCategory(val id: String, val name: String, @SerialName("is_system") val isSystem: Boolean = false)
+@Serializable data class CategoryReq(val name: String)
 @Serializable data class ExpenseDto(val id: String, @SerialName("category_name") val category: String, val amount: String, val method: String, val note: String? = null, @SerialName("occurred_on") val day: String)
 @Serializable data class ExpensePage(val items: List<ExpenseDto>, val total: String)
 @Serializable data class ExpenseReq(@SerialName("category_id") val categoryId: String?, val amount: String, val method: String, val note: String? = null)
@@ -274,6 +275,8 @@ interface MoneyApi {
     @GET("cash/today") suspend fun cashToday(): CashDayDto
     @POST("cash/close") suspend fun close(@Body b: CloseReq): CashDayDto
     @GET("expenses/categories") suspend fun expenseCategories(): List<ExpenseCategory>
+    @POST("expenses/categories") suspend fun addCategory(@Body b: CategoryReq): ExpenseCategory
+    @DELETE("expenses/categories/{id}") suspend fun deleteCategory(@Path("id") id: String)
     @GET("expenses") suspend fun expenses(): ExpensePage
     @POST("expenses") suspend fun addExpense(@Body b: ExpenseReq): ExpenseDto
     @DELETE("expenses/{id}") suspend fun deleteExpense(@Path("id") id: String)

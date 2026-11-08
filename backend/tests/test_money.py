@@ -439,3 +439,37 @@ def test_labour_attendance_pay_and_balance(c: TestClient) -> None:
     assert c.get("/v1/labour/workers", headers=h).json()["items"][0]["balance_to_pay"] == "750.00"
     no_wage = c.post("/v1/labour/workers", headers=h, json={"name": "X", "gender": "other"})
     assert no_wage.json()["code"] == "labour.no_wage"
+
+
+def test_owner_manages_expense_categories(c: TestClient) -> None:
+    h = signup(c)
+    c.get("/v1/expenses/categories", headers=h)
+    tea = c.post("/v1/expenses/categories", headers=h, json={"name": "Tea & snacks"})
+    assert tea.status_code == 201
+    names = [x["name"] for x in c.get("/v1/expenses/categories", headers=h).json()]
+    assert "Tea & snacks" in names and "Rent" in names
+    s = staff(c, h)
+    assert c.post("/v1/expenses/categories", headers=s, json={"name": "Party"}).status_code == 403
+    assert (
+        c.post("/v1/expenses", headers=s, json={"category_name": "Party", "amount": "10"}).json()[
+            "code"
+        ]
+        == "expense.category_not_allowed"
+    )
+    assert (
+        c.post(
+            "/v1/expenses", headers=s, json={"category_name": "tea & snacks", "amount": "10"}
+        ).status_code
+        == 201
+    )  # existing, any case
+    rent = next(
+        x for x in c.get("/v1/expenses/categories", headers=h).json() if x["name"] == "Rent"
+    )
+    assert (
+        c.delete(f"/v1/expenses/categories/{rent['id']}", headers=h).json()["code"]
+        == "expense.category_system"
+    )
+    assert c.delete(f"/v1/expenses/categories/{tea.json()['id']}", headers=h).status_code == 204
+    assert (
+        c.get("/v1/expenses", headers=h).json()["items"][0]["category_name"] == "Tea & snacks"
+    )  # history keeps the name

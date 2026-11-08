@@ -98,7 +98,8 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    OutlinedButton(onClick = onClick, modifier = modifier.height(48.dp), shape = RoundedCornerShape(12.dp)) {
+    // Same height and shape as PrimaryButton so the two line up when placed side by side.
+    OutlinedButton(onClick = onClick, modifier = modifier.height(56.dp), shape = RoundedCornerShape(14.dp)) {
         Text(text, color = Anylo.colors.text, fontWeight = FontWeight.SemiBold)
     }
 }

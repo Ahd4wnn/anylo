@@ -114,6 +114,24 @@ def _category(db: Session, actor: Actor, data: ExpenseIn) -> tuple[UUID, str]:
         if r:
             return r.id, r.name
     name = (data.category_name or "Misc").strip() or "Misc"
+    found = _q(
+        db,
+        "SELECT id, name FROM expense_categories WHERE shop_id = :s AND lower(name) = lower(:n)",
+        s=sid,
+        n=name,
+    ).first()
+    if found:
+        return found.id, found.name
+    if actor.role not in ("owner", "manager"):  # keeps the list tidy: staff pick, owners add
+        raise AppError(
+            "expense.category_not_allowed",
+            "Pick a category from the list, or ask the owner to add a new one.",
+            403,
+        )
+    return _add_category(db, sid, name)
+
+
+def _add_category(db: Session, sid: UUID, name: str) -> tuple[UUID, str]:
     r = _q(
         db,
         "INSERT INTO expense_categories (shop_id, name) VALUES (:s, :n)"
@@ -122,6 +140,28 @@ def _category(db: Session, actor: Actor, data: ExpenseIn) -> tuple[UUID, str]:
         n=name,
     ).one()
     return r.id, r.name
+
+
+def add_category(db: Session, actor: Actor, name: str) -> dict[str, Any]:
+    cid, cname = _add_category(db, shop_id_of(actor), name.strip())
+    audit.record(db, actor, "expense_category", cid, "create", None, {"name": cname})
+    return {"id": cid, "name": cname, "is_system": False}
+
+
+def delete_category(db: Session, actor: Actor, category_id: UUID) -> None:
+    """Past expenses keep their category name (snapshot); only the choice in the list goes away."""
+    r = _q(
+        db,
+        "SELECT name, is_system FROM expense_categories WHERE id = :i AND shop_id = :s",
+        i=category_id,
+        s=shop_id_of(actor),
+    ).first()
+    if not r:
+        raise AppError("expense.category_not_found", "This category was not found.", 404)
+    if r.is_system:
+        raise AppError("expense.category_system", "Built-in categories can't be removed.", 409)
+    _q(db, "DELETE FROM expense_categories WHERE id = :i", i=category_id)
+    audit.record(db, actor, "expense_category", category_id, "delete", {"name": r.name}, None)
 
 
 def list_expenses(

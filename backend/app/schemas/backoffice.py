@@ -80,6 +80,10 @@ class CreditNoteIn(BaseModel):
     approval_pin: str | None = Field(default=None, min_length=4, max_length=6, pattern=r"^[0-9]+$")
 
 
+class CategoryNameIn(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
 class ExpenseIn(BaseModel):
     category_id: UUID | None = None
     category_name: str | None = Field(default=None, max_length=60)

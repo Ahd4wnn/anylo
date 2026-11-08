@@ -313,9 +313,13 @@ private fun ExpensesScreen(app: AppState, onBack: () -> Unit) {
     var method by remember { mutableStateOf("cash") }
     var note by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var managing by remember { mutableStateOf(false) }
     suspend fun load() { runCatching { page = app.session.money.expenses() } }
-    LaunchedEffect(Unit) { runCatching { cats = app.session.money.expenseCategories() }; load() }
+    suspend fun loadCats() { runCatching { cats = app.session.money.expenseCategories() } }
+    LaunchedEffect(Unit) { loadCats(); load() }
+    if (managing) CategoryDialog(app, cats, onChange = { scope.launch { loadCats() } }) { managing = false }
     Screen("Expenses", onBack) {
+        if (app.can("expense.manage")) SecondaryButton("Manage categories", { managing = true }, Modifier.fillMaxWidth())
         Card {
             Text("Add an expense", fontWeight = FontWeight.SemiBold)
             ErrorBanner(error)
@@ -533,4 +537,37 @@ fun ReturningCustomers(app: AppState, phone: String, onPick: (CustomerDto) -> Un
             if (b > BigDecimal.ZERO) Pill("Due ${rs(m.balance)}")
         }
     }
+}
+
+/** Owners add their own expense categories; built-in ones stay. Saved expenses keep their category name. */
+@Composable
+private fun CategoryDialog(app: AppState, cats: List<`in`.anylo.app.core.ExpenseCategory>, onChange: () -> Unit, onClose: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var name by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(onDismissRequest = onClose, title = { Text("Expense categories") },
+        confirmButton = { TextButton(onClick = onClose) { Text("Done") } },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ErrorBanner(error)
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AnyloField("New category", name, { name = it.take(60) }, Modifier.weight(1f))
+                    androidx.compose.material3.Button(enabled = name.isNotBlank(), modifier = Modifier.height(56.dp), onClick = {
+                        scope.launch {
+                            runCatching { app.session.money.addCategory(`in`.anylo.app.core.CategoryReq(name.trim())) }
+                                .onSuccess { name = ""; error = null; onChange() }.onFailure { error = app.session.messageOf(it) }
+                        }
+                    }) { Text("Add") }
+                }
+                cats.forEach { c ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(c.name, Modifier.weight(1f))
+                        if (c.isSystem) Text("Built-in", color = Anylo.colors.text3, style = MaterialTheme.typography.bodySmall)
+                        else TextButton(onClick = {
+                            scope.launch { runCatching { app.session.money.deleteCategory(c.id) }.onSuccess { onChange() }.onFailure { error = app.session.messageOf(it) } }
+                        }) { Text("Remove", color = Anylo.colors.danger) }
+                    }
+                }
+            }
+        })
 }
