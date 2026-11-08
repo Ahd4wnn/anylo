@@ -13,3 +13,4 @@ httpx
 openpyxl
 pillow
 openai
+reportlab

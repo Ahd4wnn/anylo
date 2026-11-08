@@ -130,7 +130,12 @@ def onboarding(db: Session, actor: Actor) -> dict[str, bool]:
         .mappings()
         .one()
     )
-    return {**r, "products": False}  # products step goes live with the catalogue (M2)
+    products = bool(
+        _q(
+            db, "SELECT 1 FROM products WHERE shop_id = :s AND deleted_at IS NULL LIMIT 1", s=sid
+        ).first()
+    )
+    return {**r, "products": products}
 
 
 def complete_onboarding(db: Session, actor: Actor) -> None:

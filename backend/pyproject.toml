@@ -17,9 +17,11 @@ known-third-party = ["alembic"]
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*" = ["E501", "S608"]  # SQL built from in-repo constants only
 "app/rls.py" = ["S608", "E501"]  # policy SQL built from constants
-"tests/*" = ["E501", "S608"]
+"tests/*" = ["E501", "S608", "E731"]
 "app/services/*.py" = ["E501"]  # long SQL strings read better unwrapped
 "app/services/shop.py" = ["E501", "S608"]  # column list constant interpolated into SQL
+"app/services/catalogue*.py" = ["E501", "S608"]  # column lists / fixed WHERE fragments; values always bound
+"app/data/*" = ["E501"]  # data tables
 "app/permissions.py" = ["E741"]  # O/M/S role shorthands mirror the docs matrix
 
 [tool.mypy]
@@ -27,6 +29,10 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 strict = true
 files = ["app"]
+
+[[tool.mypy.overrides]]
+module = ["reportlab.*", "openpyxl.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
