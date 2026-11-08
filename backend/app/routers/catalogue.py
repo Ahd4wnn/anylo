@@ -254,6 +254,12 @@ def starter_products(actor: CurrentActor, db: DB) -> dict[str, int]:
         ).scalars()
     }
     added = 0
+    produce = btype == "produce"
+    exempt = (
+        db.execute(text("SELECT id FROM gst_rates WHERE kind = 'exempt' LIMIT 1")).scalar()
+        if produce
+        else None
+    )
     for name, category, unit, hsn in PRESETS.get(btype, PRESETS["general"]):
         if name.lower() in have:
             continue
@@ -265,6 +271,8 @@ def starter_products(actor: CurrentActor, db: DB) -> dict[str, int]:
                 category_id=svc.category_by_name(db, sid, category),
                 unit_code=unit,
                 hsn_code=hsn,
+                tax_rate_id=exempt,
+                track_stock=not produce,
                 variants=[VariantIn(sale_price=Decimal(0))],
             ),
         )

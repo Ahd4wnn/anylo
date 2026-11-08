@@ -15,6 +15,7 @@ BusinessType = Literal[
     "pharmacy",
     "stationery",
     "nursery",
+    "produce",
     "other",
 ]
 Platform = Literal["web", "android", "ios"]

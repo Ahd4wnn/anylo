@@ -76,3 +76,22 @@ PRESETS: dict[str, list[tuple[str, str, str, str | None]]] = {
     ],
 }
 PRESETS["other"] = PRESETS["general"]
+
+# Loose fresh produce, sold by weight. Fresh vegetables and fruits are GST-exempt (Notification 2/2017-CT(Rate)),
+# so these start exempt instead of asking the seller to set a rate on every item. Stock tracking is off:
+# weight lost to trimming and spoilage makes counted stock meaningless for most vegetable sellers.
+PRODUCE: list[tuple[str, str, str, str | None]] = [
+    ("Tomato", "Vegetables", "KGS", "0702"),
+    ("Onion", "Vegetables", "KGS", "0703"),
+    ("Potato", "Vegetables", "KGS", "0701"),
+    ("Carrot", "Vegetables", "KGS", "0706"),
+    ("Beans", "Vegetables", "KGS", "0708"),
+    ("Green Chilli", "Vegetables", "KGS", "0709"),
+    ("Coriander Leaves", "Leafy greens", "NOS", "0709"),
+    ("Spinach", "Leafy greens", "NOS", "0709"),
+    ("Banana", "Fruits", "KGS", "0803"),
+    ("Apple", "Fruits", "KGS", "0808"),
+    ("Orange", "Fruits", "KGS", "0805"),
+    ("Grapes", "Fruits", "KGS", "0806"),
+]
+PRESETS["produce"] = PRODUCE

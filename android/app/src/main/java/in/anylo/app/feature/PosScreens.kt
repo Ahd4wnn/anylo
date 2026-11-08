@@ -109,6 +109,7 @@ import `in`.anylo.app.core.ProductDto
 import `in`.anylo.app.core.RateDto
 import `in`.anylo.app.core.Receipt
 import `in`.anylo.app.core.Shop
+import `in`.anylo.app.core.UnitDto
 import `in`.anylo.app.core.VariantDto
 import `in`.anylo.app.core.voiceScore
 import `in`.anylo.app.print.PrinterController
@@ -133,6 +134,9 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 private fun rupees(v: BigDecimal) = "₹" + money(v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString())
+/** Short shop-counter names for GST unit codes (KGS → kg). */
+fun unitLabel(code: String) = mapOf("KGS" to "kg", "GMS" to "g", "LTR" to "L", "MLT" to "ml", "MTR" to "m", "NOS" to "pcs", "PCS" to "pcs")[code] ?: code.lowercase()
+
 private fun dec(s: String) = s.toBigDecimalOrNull() ?: BigDecimal.ZERO
 private fun inStock(p: ProductDto) = !p.trackStock || p.variants.any { dec(it.stockQty).signum() > 0 }
 
@@ -181,7 +185,9 @@ fun PosScreen(app: AppState) {
     var category by remember { mutableStateOf<String?>(null) }
     var showCart by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf<ProductDto?>(null) }
-    var customOpen by remember { mutableStateOf(false) }
+    var quickName by remember { mutableStateOf<String?>(null) }
+    var weighing by remember { mutableStateOf<Pair<ProductDto, VariantDto>?>(null) }
+    var units by remember { mutableStateOf(emptyList<UnitDto>()) }
     var heldOpen by remember { mutableStateOf(false) }
     // Amount fixed when the sheet opens: saving clears the cart, and the success view must outlive it.
     var paying by remember { mutableStateOf<BigDecimal?>(null) }
@@ -194,10 +200,16 @@ fun PosScreen(app: AppState) {
         runCatching { app.session.catalogue.products(null).items }.onSuccess { products = it; CatalogueCache.save(app, ctx, it) }
         runCatching { shop = app.session.api.shop() }
         runCatching { rates = app.session.catalogue.rates() }
+        runCatching { units = app.session.catalogue.units() }
     }
     LaunchedEffect(message) { if (message != null) { kotlinx.coroutines.delay(5000); message = null } }
 
-    fun add(p: ProductDto) { if (p.variants.size > 1) picking = p else p.variants.firstOrNull()?.let { cart.add(lineOf(p, it)); message = "Added ${p.name}" } }
+    fun addVariant(p: ProductDto, v: VariantDto) {
+        // Loose items sold by weight or volume open the weighing pad instead of adding 1.
+        if (units.find { it.code == p.unitCode }?.allowsDecimal == true) weighing = p to v
+        else { cart.add(lineOf(p, v)); message = "Added ${p.name}" }
+    }
+    fun add(p: ProductDto) { if (p.variants.size > 1) picking = p else p.variants.firstOrNull()?.let { addVariant(p, it) } }
 
     /** Barcode from the camera, a USB/Bluetooth scanner (types + Enter) or the search box. */
     fun addCode(code: String) {
@@ -255,9 +267,13 @@ fun PosScreen(app: AppState) {
         val cats = products.mapNotNull { it.categoryName }.distinct().sorted()
         Row(verticalAlignment = Alignment.CenterVertically) {
         LazyRow(Modifier.weight(1f).padding(vertical = 8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item {
+                androidx.compose.material3.AssistChip(onClick = { quickName = "" }, label = { Text("Quick add", fontWeight = FontWeight.SemiBold) },
+                    leadingIcon = { Icon(Icons.Filled.Add, null, Modifier.size(18.dp)) },
+                    colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(containerColor = Anylo.colors.primarySoft, labelColor = Anylo.colors.onPrimarySoft, leadingIconContentColor = Anylo.colors.onPrimarySoft))
+            }
             item { FilterChip(selected = category == null, onClick = { category = null }, label = { Text("All") }) }
             items(cats) { c -> FilterChip(selected = category == c, onClick = { category = if (category == c) null else c }, label = { Text(c) }) }
-            item { FilterChip(selected = false, onClick = { customOpen = true }, label = { Text("+ Custom item") }) }
         }
             Box {
                 IconButton(onClick = { viewMenu = true }, Modifier.padding(end = 8.dp)) { Icon(view.icon, "Change view: ${view.label}") }
@@ -277,6 +293,13 @@ fun PosScreen(app: AppState) {
         LazyVerticalGrid(GridCells.Fixed(view.columns), Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(shown, key = { it.id }) { p -> ItemTile(p, view) { add(p) } }
+            if (shown.isEmpty()) item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                Column(Modifier.fillMaxWidth().padding(vertical = 32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(if (products.isEmpty()) "No items yet." else "No items match.", color = Anylo.colors.text2)
+                    val n = q.trim().takeUnless { it.all(Char::isDigit) }.orEmpty()
+                    PrimaryButton(if (n.isEmpty()) "Quick add" else "Quick add \"$n\"", { quickName = n })
+                }
+            }
         }
         message?.let { Text(it, Modifier.fillMaxWidth().background(Anylo.colors.tint).padding(12.dp), textAlign = TextAlign.Center) }
         Row(Modifier.fillMaxWidth().background(Anylo.colors.surface).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -292,14 +315,15 @@ fun PosScreen(app: AppState) {
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     p.variants.forEach { v ->
-                        Row(Modifier.fillMaxWidth().clickable { cart.add(lineOf(p, v)); picking = null; message = "Added ${p.name}" }.padding(vertical = 14.dp)) {
+                        Row(Modifier.fillMaxWidth().clickable { picking = null; addVariant(p, v) }.padding(vertical = 14.dp)) {
                             Text(v.name ?: "Default", Modifier.weight(1f)); Text(rupees(dec(v.salePrice)), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
             })
     }
-    if (customOpen) CustomItemDialog(rates, scheme == "regular", onClose = { customOpen = false }) { cart.add(it); message = "Added ${it.name}" }
+    quickName?.let { n -> QuickAddDialog(app, n, rates, units, scheme == "regular", onClose = { quickName = null; q = "" }) { cart.add(it); message = "Added ${it.name}" } }
+    weighing?.let { (p, v) -> WeighDialog(p, v, onClose = { weighing = null }) { qty -> cart.add(lineOf(p, v).copy(qty = qty)); weighing = null; message = "Added ${p.name}" } }
     if (heldOpen) HeldDialog(app, onClose = { heldOpen = false }, onMessage = { message = it })
     paying?.let { amount ->
         PaymentDialog(app, shop, amount, onClose = { paying = null; if (cart.state.lines.isEmpty()) showCart = false }) { r ->
@@ -312,28 +336,90 @@ fun PosScreen(app: AppState) {
     }
 }
 
+/** For anything not in the item list yet. Owners and managers can save it as an item at the same time. */
 @Composable
-private fun CustomItemDialog(rates: List<RateDto>, needsRate: Boolean, onClose: () -> Unit, onAdd: (CartLine) -> Unit) {
-    var name by remember { mutableStateOf("") }
+private fun QuickAddDialog(app: AppState, initialName: String, rates: List<RateDto>, units: List<UnitDto>, needsRate: Boolean, onClose: () -> Unit, onAdd: (CartLine) -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefs = remember { ctx.getSharedPreferences("anylo_pos", Context.MODE_PRIVATE) }
+    var name by remember { mutableStateOf(initialName) }
     var price by remember { mutableStateOf("") }
-    var rateId by remember { mutableStateOf("") }
+    var qty by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("NOS") }
+    var rateId by remember { mutableStateOf(prefs.getString("lastRate", "").orEmpty().takeIf { id -> rates.any { it.id == id } }.orEmpty()) }
+    var save by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val canSave = app.can("product.manage")
     val rate = rates.find { it.id == rateId }
     val ok = name.isNotBlank() && dec(price).signum() > 0 && (!needsRate || rate != null)
-    AlertDialog(onDismissRequest = onClose, title = { Text("Custom item") },
+    AlertDialog(onDismissRequest = onClose, title = { Text("Quick add") },
         dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
         confirmButton = {
             TextButton(enabled = ok, onClick = {
-                onAdd(CartLine(UUID.randomUUID().toString(), custom = CustomItem(name.trim(), rate?.id), name = name.trim(), unit = "NOS", qty = "1",
-                    unitPrice = price, salePrice = price, rate = rate?.rate ?: "0", inclusive = true))
-                onClose()
-            }) { Text("Add") }
+                prefs.edit().putString("lastRate", rateId).apply()
+                val q = qty.ifBlank { "1" }
+                if (!save) {
+                    onAdd(CartLine(UUID.randomUUID().toString(), custom = CustomItem(name.trim(), rate?.id, unitCode = unit), name = name.trim(), unit = unit, qty = q,
+                        unitPrice = price, salePrice = price, rate = rate?.rate ?: "0", inclusive = true))
+                    onClose()
+                } else scope.launch {
+                    runCatching {
+                        app.session.catalogue.create(ProductDto(name = name.trim(), unitCode = unit, taxRateId = rate?.id, trackStock = false, variants = listOf(VariantDto(salePrice = price))))
+                    }.onSuccess { p -> onAdd(lineOf(p, p.variants.first()).copy(qty = q)); onClose() }.onFailure { error = app.session.messageOf(it) }
+                }
+            }) { Text("Add to bill") }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                ErrorBanner(error)
                 AnyloField("Name", name, { name = it })
-                AnyloField("Price ₹ (incl. GST)", price, { price = it }, keyboard = KeyboardType.Decimal)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AnyloField("Price ₹", price, { price = it }, Modifier.weight(1f), keyboard = KeyboardType.Decimal)
+                    AnyloField("Qty", qty, { qty = it }, Modifier.weight(1f), keyboard = KeyboardType.Decimal)
+                }
+                Picker("Sold in", units.ifEmpty { listOf(UnitDto("NOS", "Pieces", false)) }.map { Option(it.code, it.label) }, unit) { unit = it }
                 if (needsRate) Picker("GST rate", listOf(Option("", "Choose")) + rates.map { Option(it.id, it.label) }, rateId) { rateId = it }
-                Text("Not saved to your items.", color = Anylo.colors.text2, style = MaterialTheme.typography.bodySmall)
+                if (canSave) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Also save to my items", Modifier.weight(1f)); androidx.compose.material3.Switch(save, { save = it })
+                } else Text("Added to this bill only. The owner can add it to the item list later.", color = Anylo.colors.text2, style = MaterialTheme.typography.bodySmall)
+            }
+        })
+}
+
+/** Sell by weight: type the weight, tap a common weight, or type the money ("₹50 of tomatoes") and get the weight. */
+@Composable
+private fun WeighDialog(p: ProductDto, v: VariantDto, onClose: () -> Unit, onAdd: (String) -> Unit) {
+    var byAmount by remember { mutableStateOf(false) }
+    var value by remember { mutableStateOf("") }
+    val price = dec(v.salePrice)
+    val unit = unitLabel(p.unitCode)
+    val qty = when {
+        !byAmount -> value.toBigDecimalOrNull()
+        price.signum() > 0 -> value.toBigDecimalOrNull()?.divide(price, 3, java.math.RoundingMode.HALF_UP)
+        else -> null
+    }?.setScale(3, java.math.RoundingMode.HALF_UP)?.takeIf { it.signum() > 0 }
+    val presets = mapOf(
+        "KGS" to listOf("0.25" to "250 g", "0.5" to "500 g", "1" to "1 kg", "2" to "2 kg"),
+        "GMS" to listOf("100" to "100 g", "250" to "250 g", "500" to "500 g"),
+        "LTR" to listOf("0.5" to "500 ml", "1" to "1 L", "2" to "2 L"),
+    )[p.unitCode]
+    AlertDialog(onDismissRequest = onClose, title = { Text("${p.name} · ${rupees(price)}/$unit") },
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+        confirmButton = { TextButton(enabled = qty != null, onClick = { qty?.let { onAdd(it.stripTrailingZeros().toPlainString()) } }) { Text("Add to bill") } },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = !byAmount, onClick = { byAmount = false; value = "" }, label = { Text("Weight ($unit)") })
+                    if (price.signum() > 0) FilterChip(selected = byAmount, onClick = { byAmount = true; value = "" }, label = { Text("Amount ₹") })
+                }
+                AnyloField(if (byAmount) "Amount ₹" else "Weight in $unit", value, { value = it.filter { c -> c.isDigit() || c == '.' } }, keyboard = KeyboardType.Decimal)
+                if (!byAmount && presets != null) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    presets.forEach { (q, label) ->
+                        Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(10.dp)).border(1.dp, Anylo.colors.border, RoundedCornerShape(10.dp))
+                            .clickable { onAdd(q) }, contentAlignment = Alignment.Center) { Text(label, maxLines = 1, fontWeight = FontWeight.SemiBold) }
+                    }
+                }
+                Text(qty?.let { "${it.stripTrailingZeros().toPlainString()} $unit · ${rupees(price * it)}" } ?: " ", color = Anylo.colors.text2)
             }
         })
 }
@@ -375,7 +461,7 @@ private fun CartView(app: AppState, scheme: String, canEditPrice: Boolean, onBac
                         }) { Icon(Icons.Filled.Remove, "Less") }
                         SmallField(l.qty, { v -> cart.setLine(l.key) { it.copy(qty = v) } }, "Quantity", Modifier.width(76.dp))
                         IconButton(onClick = { cart.setLine(l.key) { it.copy(qty = (dec(it.qty) + BigDecimal.ONE).toPlainString()) } }) { Icon(Icons.Filled.Add, "More") }
-                        Text(l.unit.lowercase(), color = Anylo.colors.text2)
+                        Text(unitLabel(l.unit), color = Anylo.colors.text2)
                         Spacer(Modifier.weight(1f))
                         if (canEditPrice || l.custom != null) SmallField(l.unitPrice, { v -> cart.setLine(l.key) { it.copy(unitPrice = v) } }, "Price", Modifier.width(100.dp))
                         else Text(rupees(dec(l.unitPrice)), fontWeight = FontWeight.SemiBold)

@@ -25,6 +25,7 @@ BUSINESS_TYPES = [
     ("pharmacy", "Pharmacy"),
     ("stationery", "Stationery & books"),
     ("nursery", "Plant nursery"),
+    ("produce", "Vegetables & fruits"),
     ("other", "Something else"),
 ]
 

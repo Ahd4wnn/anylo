@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { api, ApiError } from "@/api/client";
 import { useAuth } from "@/features/auth/store";
 import type { Page, Product, Variant } from "@/features/items/api";
-import { useCategories, useRates } from "@/features/items/api";
+import { useCategories } from "@/features/items/api";
 import { useShop } from "@/features/shop/api";
 import { computeInvoice } from "@/lib/gst";
 import { formatINR } from "@/lib/money";
@@ -16,6 +16,7 @@ import { useHeld } from "./api";
 import { useCart, type CartLine } from "./cart";
 import { CameraButton, CameraScanner, cameraScanSupported, useHidScanner, voiceScore, VoiceButton } from "./inputs";
 import { PaymentSheet } from "./PaymentSheet";
+import { QuickAddDialog, unitLabel, useMeasured, WeighDialog } from "./QuickAdd";
 
 const fmtQty = (q: string) => Number(q).toLocaleString("en-IN", { maximumFractionDigits: 3 });
 const cell = "h-10 rounded-md border border-border-strong bg-surface px-2 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
@@ -32,7 +33,6 @@ export function PosPage() {
   const canEditPrice = useAuth((s) => s.me?.user.role !== "salesperson");
   const { data: shop } = useShop();
   const { data: cats = [] } = useCategories();
-  const { data: rates = [] } = useRates();
   const { data: page } = useQuery({ queryKey: ["pos-products"], queryFn: () => api<Page>("/products?limit=200") });
   const { data: held = [] } = useHeld();
   const [q, setQ] = useState("");
@@ -41,7 +41,9 @@ export function PosPage() {
   const [paying, setPaying] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
-  const [custom, setCustom] = useState(false);
+  const [quick, setQuick] = useState<string | null>(null);
+  const [weighing, setWeighing] = useState<{ p: Product; v: Variant } | null>(null);
+  const measured = useMeasured();
   const [showHeld, setShowHeld] = useState(false);
   const [help, setHelp] = useState(false);
   const search = useRef<HTMLInputElement>(null);
@@ -51,9 +53,11 @@ export function PosPage() {
   const addProduct = useCallback((p: Product, v?: Variant) => {
     if (!v && p.variants.length > 1) return setPicking(p);
     const variant = v ?? p.variants[0];
-    if (variant) cart.add(lineFrom(p, variant));
     setPicking(null);
-  }, [cart]);
+    if (!variant) return;
+    if (measured(p.unit_code)) return setWeighing({ p, v: variant }); // loose items: weigh first
+    cart.add(lineFrom(p, variant));
+  }, [cart, measured]);
 
   const addByCode = useCallback(async (code: string) => {
     for (const p of items) {
@@ -154,7 +158,8 @@ export function PosPage() {
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_440px]">
         {/* Catalogue */}
         <section className="flex min-h-0 flex-col p-3 sm:p-5">
-          <div className="flex items-center gap-1 rounded-xl border border-border-strong bg-surface pl-3 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
+          <div className="flex gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-border-strong bg-surface pl-3 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">
             <Search className="h-5 w-5 shrink-0 text-text-3" aria-hidden />
             <input ref={search} value={q} onChange={(e) => setQ(e.target.value)} data-scan-target="1" autoFocus aria-label="Search items"
               placeholder="Search, scan a barcode or speak…" className="h-12 min-w-0 flex-1 bg-transparent px-2 text-base focus:outline-none"
@@ -165,11 +170,14 @@ export function PosPage() {
             <input ref={snapRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => e.target.files?.[0] && void snap(e.target.files[0])} />
             <button onClick={() => snapRef.current?.click()} className="mr-1 grid h-11 w-11 place-items-center rounded-lg text-text-2 hover:bg-surface-2" aria-label="Snap & Find: photo search" title="Snap & Find"><SnapIcon className="h-5 w-5" /></button>
           </div>
+          <Button size="md" variant="secondary" className="h-[50px] shrink-0" onClick={() => setQuick("")} title="Add an item that isn't in your list">
+            <Plus className="h-4 w-4" aria-hidden /><span className="hidden sm:inline">Quick add</span>
+          </Button>
+          </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
             {[{ id: "", name: "All" }, ...cats].map((c) => (
               <button key={c.id} onClick={() => setCat(c.id)} className={`h-9 shrink-0 rounded-full px-4 text-sm font-medium ${cat === c.id ? "bg-primary text-on-primary" : "bg-surface text-text-2 hover:bg-surface-2"}`}>{c.name}</button>
             ))}
-            <button onClick={() => setCustom(true)} className="h-9 shrink-0 rounded-full border border-dashed border-border-strong px-4 text-sm font-medium text-text-2 hover:bg-surface-2">+ Custom item</button>
           </div>
           <div className="mt-3 grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto pb-24 sm:grid-cols-3 xl:grid-cols-4 lg:pb-2">
             {shown.map((p) => {
@@ -188,7 +196,12 @@ export function PosPage() {
                 </button>
               );
             })}
-            {!shown.length && <p className="col-span-full py-10 text-center text-text-2">{items.length ? "No items match. Press Enter to look up a barcode." : "Add items first in Items."}</p>}
+            {!shown.length && (
+              <div className="col-span-full space-y-3 py-10 text-center text-text-2">
+                <p>{items.length ? "No items match. Press Enter to look up a barcode." : "No items yet."}</p>
+                <Button size="md" onClick={() => setQuick(/^\d{6,}$/.test(q.trim()) ? "" : q.trim())}><Plus className="h-4 w-4" aria-hidden />Quick add{q.trim() && !/^\d{6,}$/.test(q.trim()) ? ` "${q.trim()}"` : ""}</Button>
+              </div>
+            )}
           </div>
         </section>
 
@@ -209,7 +222,7 @@ export function PosPage() {
                       <button onClick={() => Number(l.qty) > 1 ? cart.setLine(l.key, { qty: String(Number(l.qty) - 1) }) : cart.remove(l.key)} className="grid h-9 w-9 place-items-center rounded-md border border-border" aria-label="Less"><Minus className="h-4 w-4" /></button>
                       <input value={l.qty} onChange={(e) => cart.setLine(l.key, { qty: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" aria-label="Quantity" className={`${cell} tnum w-16 text-center`} />
                       <button onClick={() => cart.setLine(l.key, { qty: String(Number(l.qty) + 1) })} className="grid h-9 w-9 place-items-center rounded-md border border-border" aria-label="More"><Plus className="h-4 w-4" /></button>
-                      <span className="text-sm text-text-2">{l.unit.toLowerCase()} ×</span>
+                      <span className="text-sm text-text-2">{unitLabel(l.unit)} ×</span>
                       {canEditPrice || l.custom
                         ? <input value={l.unitPrice} onChange={(e) => cart.setLine(l.key, { unitPrice: e.target.value.replace(/[^\d.]/g, "") })} inputMode="decimal" aria-label="Price" className={`${cell} tnum w-24 text-right`} />
                         : <span className="tnum">{formatINR(l.unitPrice)}</span>}
@@ -268,31 +281,9 @@ export function PosPage() {
         <CustomerForm onDone={() => setCustomerOpen(false)} shopState={shopState} />
       </Dialog>
 
-      <Dialog open={custom} onClose={() => setCustom(false)} title="Custom item">
-        <form className="space-y-3" onSubmit={(e) => {
-          e.preventDefault();
-          const f = new FormData(e.currentTarget);
-          const rateId = String(f.get("rate") || "");
-          const rate = rates.find((r) => r.id === rateId)?.rate ?? "0";
-          cart.add({ custom: { name: String(f.get("name")), tax_rate_id: rateId || null, unit_code: "NOS" }, name: String(f.get("name")), unit: "NOS",
-            unitPrice: String(f.get("price")), salePrice: String(f.get("price")), rate, inclusive: shop?.tax.prices_include_tax ?? true, qty: String(f.get("qty") || "1") });
-          setCustom(false);
-        }}>
-          <p className="text-sm text-text-2">For one-off items. It won't be added to your item list.</p>
-          <input name="name" required placeholder="Item name" className={`${cell} h-12 w-full`} />
-          <div className="grid grid-cols-2 gap-2">
-            <input name="price" required inputMode="decimal" placeholder="Price ₹" className={`${cell} h-12 w-full`} />
-            <input name="qty" inputMode="decimal" placeholder="Qty (1)" className={`${cell} h-12 w-full`} />
-          </div>
-          {shop?.tax.gst_scheme === "regular" && (
-            <select name="rate" required className={`${cell} h-12 w-full`} defaultValue="">
-              <option value="" disabled>GST rate</option>
-              {rates.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-            </select>
-          )}
-          <Button type="submit" className="w-full">Add to bill</Button>
-        </form>
-      </Dialog>
+      {quick !== null && <QuickAddDialog name={quick} onClose={() => { setQuick(null); setQ(""); }} />}
+      {weighing && <WeighDialog product={weighing.p} variant={weighing.v} onClose={() => setWeighing(null)}
+        onAdd={(qty) => { cart.add({ ...lineFrom(weighing.p, weighing.v), qty }); setWeighing(null); }} />}
 
       <Dialog open={showHeld} onClose={() => setShowHeld(false)} title="Held bills">
         {!held.length ? <p className="text-text-2">No held bills. Press Hold (F8) to park the bill on screen.</p> : (
