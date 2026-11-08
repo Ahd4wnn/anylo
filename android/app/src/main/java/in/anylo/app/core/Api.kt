@@ -169,7 +169,7 @@ interface CatalogueApi {
 @Serializable data class ReceiptShop(val name: String, val address: String = "", val phone: String? = null, val gstin: String? = null, @SerialName("logo_url") val logoUrl: String? = null)
 @Serializable data class ReceiptBuyer(val name: String? = null, val phone: String? = null, val gstin: String? = null)
 @Serializable data class ReceiptLine(
-    val name: String, @SerialName("variant_name") val variantName: String? = null, val hsn: String? = null, val qty: String, val unit: String,
+    val id: String = "", @SerialName("returned_qty") val returnedQty: String = "0", val name: String, @SerialName("variant_name") val variantName: String? = null, val hsn: String? = null, val qty: String, val unit: String,
     @SerialName("unit_price") val unitPrice: String, val discount: String, @SerialName("tax_rate") val taxRate: String, @SerialName("line_total") val lineTotal: String,
 )
 @Serializable data class TaxRow(val rate: String, val taxable: String, val cgst: String, val sgst: String, val igst: String)
@@ -183,7 +183,7 @@ interface CatalogueApi {
 @Serializable data class Receipt(
     val id: String, val number: String, val title: String, @SerialName("composition_note") val compositionNote: String? = null,
     val status: String, @SerialName("cancel_reason") val cancelReason: String? = null, @SerialName("issued_at") val issuedAt: String,
-    @SerialName("handed_over") val handedOver: Boolean, val shop: ReceiptShop, val buyer: ReceiptBuyer? = null,
+    @SerialName("handed_over") val handedOver: Boolean, @SerialName("customer_id") val customerId: String? = null, val shop: ReceiptShop, val buyer: ReceiptBuyer? = null,
     @SerialName("place_of_supply") val placeOfSupply: String, @SerialName("supply_type") val supplyType: String,
     @SerialName("state_tax_label") val stateTaxLabel: String, @SerialName("reverse_charge") val reverseCharge: String,
     val lines: List<ReceiptLine>, @SerialName("tax_summary") val taxSummary: List<TaxRow>, val totals: Totals,
@@ -209,4 +209,79 @@ interface SalesApi {
     @GET("held-bills") suspend fun held(): List<HeldDto>
     @POST("held-bills") suspend fun hold(@Body b: HeldReq): HeldDto
     @DELETE("held-bills/{id}") suspend fun unhold(@Path("id") id: String)
+}
+
+// --- M4: customers, collections, approvals, returns, cash, expenses, labour, loans (backend/app/schemas/backoffice.py) ---
+
+@Serializable data class CustomerDto(
+    val id: String, val name: String? = null, val phone: String? = null, val gstin: String? = null,
+    @SerialName("billing_address") val address: String? = null, @SerialName("credit_limit") val creditLimit: String? = null,
+    @SerialName("opening_balance") val openingBalance: String = "0", val balance: String = "0",
+    val bills: Int? = null, val spent: String? = null, @SerialName("last_visit") val lastVisit: String? = null,
+)
+@Serializable data class CustomerPage(val items: List<CustomerDto>, val total: Int, @SerialName("due_total") val dueTotal: String)
+@Serializable data class LedgerEntry(val at: String, val kind: String, val ref: String? = null, val debit: String, val credit: String, val balance: String)
+@Serializable data class LedgerDto(@SerialName("opening_balance") val openingBalance: String, val entries: List<LedgerEntry>, val balance: String)
+@Serializable data class CollectReq(val amount: String, val method: String, @SerialName("idempotency_key") val idempotencyKey: String)
+@Serializable data class CollectionDto(@SerialName("receipt_no") val receiptNo: String, val amount: String, val status: String, @SerialName("balance_after") val balanceAfter: String)
+@Serializable data class ApprovalDto(val id: String, val kind: String, val summary: String, @SerialName("requested_by_name") val requestedBy: String? = null)
+@Serializable data class NoteReq(val note: String? = null)
+@Serializable data class ReturnLineReq(@SerialName("invoice_line_id") val lineId: String, val qty: String)
+@Serializable data class CreditNoteReq(
+    @SerialName("invoice_id") val invoiceId: String, val lines: List<ReturnLineReq>, @SerialName("refund_method") val refundMethod: String,
+    val restock: Boolean, @SerialName("idempotency_key") val idempotencyKey: String,
+)
+@Serializable data class CreditNoteDto(val number: String? = null, @SerialName("approval_required") val approvalRequired: Boolean = false)
+@Serializable data class CashLine(val direction: String, val label: String, val amount: String)
+@Serializable data class DayCloseDto(@SerialName("counted_cash") val counted: String, val difference: String, val status: String)
+@Serializable data class CashDayDto(
+    @SerialName("opening_cash") val opening: String, @SerialName("cash_in") val cashIn: String, @SerialName("cash_out") val cashOut: String,
+    @SerialName("expected_cash") val expected: String, @SerialName("pending_cash") val pending: String, val breakdown: List<CashLine>,
+    val close: DayCloseDto? = null,
+)
+@Serializable data class CloseReq(@SerialName("counted_cash") val counted: String, val note: String? = null)
+@Serializable data class ExpenseCategory(val id: String, val name: String)
+@Serializable data class ExpenseDto(val id: String, @SerialName("category_name") val category: String, val amount: String, val method: String, val note: String? = null, @SerialName("occurred_on") val day: String)
+@Serializable data class ExpensePage(val items: List<ExpenseDto>, val total: String)
+@Serializable data class ExpenseReq(@SerialName("category_id") val categoryId: String?, val amount: String, val method: String, val note: String? = null)
+@Serializable data class WorkerDto(
+    val id: String, val name: String, @SerialName("wage_type") val wageType: String, @SerialName("daily_wage") val dailyWage: String,
+    @SerialName("monthly_wage") val monthlyWage: String, val earned: String, @SerialName("total_paid") val paid: String,
+    @SerialName("balance_to_pay") val balance: String, val today: String? = null,
+)
+@Serializable data class WorkerPage(val items: List<WorkerDto>, @SerialName("balance_to_pay") val balanceToPay: String)
+@Serializable data class WorkerReq(
+    val name: String, val gender: String, @SerialName("wage_type") val wageType: String,
+    @SerialName("daily_wage") val dailyWage: String, @SerialName("monthly_wage") val monthlyWage: String,
+)
+@Serializable data class AttendanceReq(@SerialName("labourer_id") val workerId: String, val day: String, val status: String)
+@Serializable data class LabourPayReq(@SerialName("labourer_id") val workerId: String, val kind: String, @SerialName("cash_amount") val cash: String, @SerialName("upi_amount") val upi: String)
+@Serializable data class LoanDto(val id: String, @SerialName("lender_name") val lender: String, val principal: String, val outstanding: String, val status: String)
+@Serializable data class LoanPage(val items: List<LoanDto>, val outstanding: String)
+@Serializable data class LoanReq(@SerialName("lender_name") val lender: String, val principal: String, @SerialName("received_method") val method: String)
+@Serializable data class RepayReq(val amount: String, val method: String)
+
+interface MoneyApi {
+    @GET("customers") suspend fun customers(@Query("q") q: String?, @Query("has_due") hasDue: Boolean = false): CustomerPage
+    @GET("customers/lookup") suspend fun lookup(@Query("phone") phone: String): List<CustomerDto>
+    @GET("customers/{id}") suspend fun customer(@Path("id") id: String): CustomerDto
+    @GET("customers/{id}/ledger") suspend fun ledger(@Path("id") id: String): LedgerDto
+    @POST("customers/{id}/payments") suspend fun collect(@Path("id") id: String, @Body b: CollectReq): CollectionDto
+    @GET("approvals") suspend fun approvals(): List<ApprovalDto>
+    @POST("approvals/{id}/approve") suspend fun approve(@Path("id") id: String, @Body b: NoteReq): JsonElement
+    @POST("approvals/{id}/reject") suspend fun reject(@Path("id") id: String, @Body b: NoteReq): JsonElement
+    @POST("credit-notes") suspend fun creditNote(@Body b: CreditNoteReq): CreditNoteDto
+    @GET("cash/today") suspend fun cashToday(): CashDayDto
+    @POST("cash/close") suspend fun close(@Body b: CloseReq): CashDayDto
+    @GET("expenses/categories") suspend fun expenseCategories(): List<ExpenseCategory>
+    @GET("expenses") suspend fun expenses(): ExpensePage
+    @POST("expenses") suspend fun addExpense(@Body b: ExpenseReq): ExpenseDto
+    @DELETE("expenses/{id}") suspend fun deleteExpense(@Path("id") id: String)
+    @GET("labour/workers") suspend fun workers(): WorkerPage
+    @POST("labour/workers") suspend fun addWorker(@Body b: WorkerReq): JsonElement
+    @POST("labour/attendance") suspend fun mark(@Body b: AttendanceReq): JsonElement
+    @POST("labour/payments") suspend fun pay(@Body b: LabourPayReq): JsonElement
+    @GET("borrowings") suspend fun loans(): LoanPage
+    @POST("borrowings") suspend fun addLoan(@Body b: LoanReq): JsonElement
+    @POST("borrowings/{id}/repay") suspend fun repay(@Path("id") id: String, @Body b: RepayReq): JsonElement
 }

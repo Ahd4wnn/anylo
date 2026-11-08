@@ -406,7 +406,7 @@ private fun CartView(app: AppState, scheme: String, canEditPrice: Boolean, onBac
             PrimaryButton("Pay ${totals?.let { rupees(it.grandTotal) } ?: ""}", onPay, enabled = totals != null && totals.grandTotal.signum() > 0)
         }
     }
-    if (customerOpen) CustomerDialog { customerOpen = false }
+    if (customerOpen) CustomerDialog(app) { customerOpen = false }
 }
 
 @Composable
@@ -419,7 +419,7 @@ private fun SmallField(value: String, onChange: (String) -> Unit, label: String,
 }
 
 @Composable
-private fun CustomerDialog(onClose: () -> Unit) {
+private fun CustomerDialog(app: AppState, onClose: () -> Unit) {
     val cart = (LocalContext.current.applicationContext as AnyloApp).cart
     val s = cart.state
     var phone by remember { mutableStateOf(s.customer.phone) }
@@ -439,7 +439,11 @@ private fun CustomerDialog(onClose: () -> Unit) {
         },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                AnyloField("Mobile", phone, { phone = it.filter(Char::isDigit).take(10) }, keyboard = KeyboardType.Phone, error = if (phoneOk) null else "Enter a 10-digit mobile number.")
+                AnyloField("Mobile", phone, { phone = it.filter(Char::isDigit).take(10) }, keyboard = KeyboardType.Phone,
+                    error = if (phoneOk || phone.length < 10) null else "Enter a 10-digit mobile number.", hint = "First 5 digits find returning customers.")
+                if (phone.length < 10 || name.isBlank()) ReturningCustomers(app, phone) { m ->
+                    phone = m.phone.orEmpty(); name = m.name.orEmpty(); gstin = m.gstin.orEmpty(); address = m.address.orEmpty(); b2b = m.gstin != null
+                }
                 AnyloField("Name", name, { name = it })
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("Business buyer (GSTIN)", Modifier.weight(1f)); Switch(b2b, { b2b = it }) }
                 if (b2b) {

@@ -139,22 +139,29 @@ The commit message hint in `code` style is the suggested Conventional Commit sco
 ## M4 · Customers, dues, returns, money out, cash
 
 **API**
-- [ ] `feat(db)`: customers (unique phone) + `customer_balances` view
-- [ ] `feat(api)`: customers CRUD, lookup, ledger (+ PDF), FIFO collection, reminders
-- [ ] `feat(api)`: credit notes (partial returns, restock, refund modes, time-limit rule)
-- [ ] `feat(api)`: expenses + categories (soft delete + audit)
-- [ ] `feat(api)`: labour (port the wage engine + tests), attendance, payments
-- [ ] `feat(api)`: borrowings + repayments
-- [ ] `feat(api)`: cash today, day close, day book
+- [x] `feat(db)`: customers (unique phone) + `customer_balances` view
+- [x] `feat(api)`: customers CRUD, lookup, ledger (+ PDF), FIFO collection, reminders
+- [x] `feat(api)`: credit notes (partial returns, restock, refund modes, time-limit rule)
+- [x] `feat(api)`: expenses + categories (soft delete + audit)
+- [x] `feat(api)`: labour (port the wage engine + tests), attendance, payments
+- [x] `feat(api)`: borrowings + repayments
+- [x] `feat(api)`: cash today, day close, day book
 
 **Web + Android**
-- [ ] `feat(web)`, `feat(android)`: customers
-- [ ] `feat(web)`, `feat(android)`: returns
-- [ ] `feat(web)`, `feat(android)`: expenses
-- [ ] `feat(web)`, `feat(android)`: labour
-- [ ] `feat(web)`, `feat(android)`: borrowings
-- [ ] `feat(web)`, `feat(android)`: cash/day close
-- [ ] `feat(web)`, `feat(android)`: approvals inbox
+- [x] `feat(web)`, `feat(android)`: customers
+- [x] `feat(web)`, `feat(android)`: returns
+- [x] `feat(web)`, `feat(android)`: expenses
+- [x] `feat(web)`, `feat(android)`: labour
+- [x] `feat(web)`, `feat(android)`: borrowings
+- [x] `feat(web)`, `feat(android)`: cash/day close
+- [x] `feat(web)`, `feat(android)`: approvals inbox
+
+
+Notes (M4 as built):
+- Returning customers are found from the **first 5 digits** of their mobile (POS customer field on web and Android), so nobody repeats the full number each visit.
+- Store credit can be given on returns; spending it at checkout and customer XLSX/ledger PDF exports move to M6 with the other exports.
+- WhatsApp reminders open a prefilled `wa.me` message; sending through the WhatsApp Business API is M7.
+- One cash register per shop, so `day_closes` has no register column yet.
 
 ## M5 · Purchases, suppliers, stock depth
 

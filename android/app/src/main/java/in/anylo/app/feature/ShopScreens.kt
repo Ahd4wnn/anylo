@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Settings
@@ -183,7 +181,7 @@ fun Shell(app: AppState, me: Me) {
     Column(Modifier.fillMaxSize().background(Anylo.colors.bg)) {
         Box(Modifier.weight(1f)) {
             when (tab) {
-                Tab.Home -> HomeScreen(app, me)
+                Tab.Home -> HomeHub(app, me)
                 Tab.Settings -> SettingsScreen(app, me)
                 Tab.Items -> ItemsScreen(app)
                 Tab.Sell -> PosScreen(app)
@@ -194,37 +192,6 @@ fun Shell(app: AppState, me: Me) {
             Tab.entries.forEach { t ->
                 NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(t.icon, null) }, label = { Text(t.label) })
             }
-        }
-    }
-}
-
-@Composable
-fun HomeScreen(app: AppState, me: Me) {
-    val scope = rememberCoroutineScope()
-    Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Logo(30)
-        me.subscription?.takeIf { it.status == "trialing" }?.let { Pill("Free trial: ${it.daysLeft} days left") }
-        if (me.activeShopId == null && me.shops.size > 1) {
-            Text("Choose a shop", style = MaterialTheme.typography.headlineMedium)
-            me.shops.forEach { s ->
-                Card(Modifier.clickable { scope.launch { app.switchShop(s.id) } }) { Text(s.name, style = MaterialTheme.typography.titleMedium) }
-            }
-            return@Column
-        }
-        Text(me.shops.firstOrNull { it.id == me.activeShopId }?.name.orEmpty(), color = Anylo.colors.text2)
-        Text("Welcome, ${me.user.fullName.substringBefore(' ')}", style = MaterialTheme.typography.headlineMedium)
-        listOf("Today's sales" to "₹0", "Bills today" to "0", "Cash in hand" to "₹0").forEach { (k, v) ->
-            Card { Text(k, color = Anylo.colors.text2); Text(v, style = MaterialTheme.typography.headlineMedium) }
-        }
-        if ("ai.use" in me.permissions) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Anylo.colors.tint).padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.AutoAwesome, null, tint = Anylo.colors.brand)
-                Spacer(Modifier.size(12.dp))
-                Text("Your AI manager is coming soon.")
-            }
-        }
-        if (me.shops.size > 1) me.shops.filter { it.id != me.activeShopId }.forEach { s ->
-            SecondaryButton("Switch to ${s.name}", { scope.launch { app.switchShop(s.id) } }, Modifier.fillMaxWidth())
         }
     }
 }

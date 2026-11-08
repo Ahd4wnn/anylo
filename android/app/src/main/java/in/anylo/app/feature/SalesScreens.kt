@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -40,7 +42,9 @@ import androidx.compose.ui.unit.dp
 import `in`.anylo.app.AppState
 import `in`.anylo.app.core.CancelReq
 import `in`.anylo.app.core.InvoicePage
+import `in`.anylo.app.core.CreditNoteReq
 import `in`.anylo.app.core.Receipt
+import `in`.anylo.app.core.ReturnLineReq
 import `in`.anylo.app.print.money
 import `in`.anylo.app.ui.Anylo
 import `in`.anylo.app.ui.AnyloField
@@ -112,6 +116,7 @@ private fun InvoiceScreen(app: AppState, id: String, onBack: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var cancelling by remember { mutableStateOf(false) }
+    var returning by remember { mutableStateOf(false) }
     LaunchedEffect(id) { runCatching { app.session.sales.get(id) }.onSuccess { r = it }.onFailure { error = app.session.messageOf(it) } }
 
     Column(Modifier.fillMaxSize().background(Anylo.colors.bg).statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
@@ -119,6 +124,8 @@ private fun InvoiceScreen(app: AppState, id: String, onBack: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
             Text(r?.number ?: "Bill", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            if (r?.status == "issued" && app.can("credit_note.create") && r?.lines?.any { BigDecimal(it.returnedQty) < BigDecimal(it.qty) } == true)
+                TextButton(onClick = { returning = true }) { Text("Return") }
             if (r?.status == "issued" && app.can("invoice.cancel")) TextButton(onClick = { cancelling = true }) { Text("Cancel bill", color = Anylo.colors.danger) }
         }
         ErrorBanner(error)
@@ -152,6 +159,9 @@ private fun InvoiceScreen(app: AppState, id: String, onBack: () -> Unit) {
         }
     }
 
+    if (returning) r?.let { bill ->
+        ReturnDialog(app, bill, onClose = { returning = false }) { msg -> message = msg; scope.launch { runCatching { app.session.sales.get(id) }.onSuccess { r = it } } }
+    }
     if (cancelling) {
         var reason by remember { mutableStateOf("") }
         AlertDialog(onDismissRequest = { cancelling = false }, title = { Text("Cancel this bill?") },
@@ -176,4 +186,50 @@ private fun InvoiceScreen(app: AppState, id: String, onBack: () -> Unit) {
 @Composable
 private fun TotalRow(label: String, amount: String) {
     Row { Text(label, Modifier.weight(1f), color = Anylo.colors.text2); Text("₹${money(amount)}", color = Anylo.colors.text2) }
+}
+
+@Composable
+private fun ReturnDialog(app: AppState, r: Receipt, onClose: () -> Unit, onDone: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    val key = remember { java.util.UUID.randomUUID().toString() }
+    val qty = remember { mutableStateMapOf<String, String>() }
+    var refund by remember { mutableStateOf("cash") }
+    var restock by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val lines = r.lines.mapNotNull { l -> qty[l.id]?.toBigDecimalOrNull()?.takeIf { it.signum() > 0 }?.let { ReturnLineReq(l.id, it.toPlainString()) } }
+    AlertDialog(onDismissRequest = onClose, title = { Text("Return items") },
+        dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
+        confirmButton = {
+            TextButton(enabled = lines.isNotEmpty(), onClick = {
+                scope.launch {
+                    runCatching { app.session.money.creditNote(CreditNoteReq(r.id, lines, refund, restock, key)) }
+                        .onSuccess { onDone(if (it.approvalRequired) "Return sent to the owner or manager to approve." else "Return saved as ${it.number}."); onClose() }
+                        .onFailure { error = app.session.messageOf(it) }
+                }
+            }) { Text("Save return") }
+        },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                ErrorBanner(error)
+                r.lines.forEach { l ->
+                    val left = BigDecimal(l.qty) - BigDecimal(l.returnedQty)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(l.name, fontWeight = FontWeight.Medium)
+                            Text("${left.stripTrailingZeros().toPlainString()} can be returned", color = Anylo.colors.text2, style = MaterialTheme.typography.bodySmall)
+                        }
+                        AnyloField("Qty", qty[l.id].orEmpty(), { v -> qty[l.id] = v.filter { it.isDigit() || it == '.' } }, Modifier.width(90.dp),
+                            keyboard = androidx.compose.ui.text.input.KeyboardType.Decimal, enabled = left.signum() > 0)
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("cash" to "Cash", "upi" to "UPI", "store_credit" to "Store credit").forEach { (m, label) ->
+                        if (m != "store_credit" || r.customerId != null) FilterChip(selected = refund == m, onClick = { refund = m }, label = { Text(label) })
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Put items back in stock", Modifier.weight(1f)); androidx.compose.material3.Switch(restock, { restock = it })
+                }
+            }
+        })
 }
