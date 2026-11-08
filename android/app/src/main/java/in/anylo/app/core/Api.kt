@@ -1,5 +1,9 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package `in`.anylo.app.core
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -16,17 +20,18 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 // DTOs mirror backend/app/schemas (OpenAPI is the contract). snake_case on the wire.
+// kotlinx omits default values, so fields the server must always see carry @EncodeDefault.
 
-@Serializable data class LoginReq(val login: String, val password: String, val platform: String = "android", @SerialName("device_label") val deviceLabel: String? = null)
+@Serializable data class LoginReq(val login: String, val password: String, @EncodeDefault val platform: String = "android", @SerialName("device_label") val deviceLabel: String? = null)
 @Serializable data class SignupReq(
     @SerialName("shop_name") val shopName: String, @SerialName("owner_name") val ownerName: String,
     val phone: String, val email: String, val password: String,
     @SerialName("business_type") val businessType: String, @SerialName("state_code") val stateCode: String,
-    val platform: String = "android",
+    @EncodeDefault val platform: String = "android",
 )
 @Serializable data class RefreshReq(@SerialName("refresh_token") val refreshToken: String)
 @Serializable data class Tokens(@SerialName("access_token") val accessToken: String, @SerialName("refresh_token") val refreshToken: String? = null)
-@Serializable data class ChangePasswordReq(@SerialName("current_password") val current: String, @SerialName("new_password") val new: String, val platform: String = "android")
+@Serializable data class ChangePasswordReq(@SerialName("current_password") val current: String, @SerialName("new_password") val new: String, @EncodeDefault val platform: String = "android")
 
 @Serializable data class UserDto(
     val id: String, val email: String, @SerialName("full_name") val fullName: String, val phone: String? = null,
