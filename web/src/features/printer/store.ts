@@ -120,7 +120,7 @@ export const usePrinter = create<PrinterState>((set, get) => ({
   error: null,
   paperDots: Number(store.get("paper")) === DOTS_80MM ? DOTS_80MM : DOTS_58MM,
   autoCut: store.get("autocut") !== "false",
-  autoPrint: store.get("autoprint") === "true",
+  autoPrint: store.get("autoprint") !== "false", // on by default: paying ends with a printed bill
   baudRate: Number(store.get("baud")) || 9600,
   supported: { bluetooth: !!nav.bluetooth, serial: !!nav.serial, usb: !!nav.usb },
 

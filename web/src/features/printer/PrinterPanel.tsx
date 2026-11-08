@@ -1,4 +1,6 @@
 import { Bluetooth, Cable, CheckCircle2, Printer, Usb } from "lucide-react";
+import { useAuth } from "@/features/auth/store";
+import { LogoPicker } from "@/features/settings/forms";
 import { useShop } from "@/features/shop/api";
 import { Button } from "@/ui/Button";
 import { FormError } from "@/features/auth/AuthShell";
@@ -17,6 +19,7 @@ export function PrinterPanel() {
   const p = usePrinter();
   const { data: shop } = useShop();
   const toast = useToast((s) => s.show);
+  const canLogo = useAuth((s) => s.can("shop.settings"));
   const anySupported = Object.values(p.supported).some(Boolean);
 
   async function test() {
@@ -55,6 +58,12 @@ export function PrinterPanel() {
           </div>
         )}
       </Section>
+
+      {canLogo && shop && (
+        <Section title="Logo on bills" description="Printed at the top of every receipt and the PDF invoice.">
+          <LogoPicker shop={shop} />
+        </Section>
+      )}
 
       <Section title="Paper and printing">
         <div>

@@ -1,6 +1,5 @@
 // Draws the server's receipt model onto a canvas sized to the printer head, then encodes it as raster ESC/POS.
 // Same model as Android/iOS, so receipts look identical everywhere (docs/07-pos-billing.md §7).
-import QRCode from "qrcode";
 import { canvasToRaster, drawLogo } from "@/features/printer/escpos";
 import type { Receipt } from "./api";
 
@@ -90,16 +89,6 @@ export async function receiptRaster(r: Receipt, dots: number): Promise<Uint8Arra
   }
   if (r.remarks) { rule(); wrap(`Note: ${r.remarks}`, 16); }
   rule();
-  // UPI QR for money still due, otherwise a QR to the online copy of the bill.
-  const qrTarget = r.upi_due_uri ?? r.public_url;
-  const qrSize = Math.round(150 * scale);
-  const img = new Image();
-  img.src = await QRCode.toDataURL(qrTarget, { margin: 0, width: qrSize, errorCorrectionLevel: "M" });
-  await img.decode();
-  y += pad;
-  ctx.drawImage(img, (dots - qrSize) / 2, y, qrSize, qrSize);
-  y += qrSize;
-  text(r.upi_due_uri ? "Scan to pay the balance" : "Scan for your bill", 16, { align: "center" });
   wrap(r.footer, 18, 600);
   text("Computer generated · Bill anything. Sell anything.", 14, { align: "center" });
   const out = document.createElement("canvas");

@@ -130,10 +130,9 @@ export function TaxForm({ shop, onSaved, submitLabel = "Save GST settings" }: { 
   );
 }
 
-export function LogoAndUpiForm({ shop, onSaved, submitLabel = "Save" }: { shop: Shop; onSaved?: () => void; submitLabel?: string }) {
+/** Logo upload; the same logo is printed at the top of every bill. */
+export function LogoPicker({ shop }: { shop: Shop }) {
   const upload = useUploadLogo();
-  const patch = usePatchShop();
-  const canUpi = useAuth((s) => s.can("shop.payment_details"));
   const toast = useToast((s) => s.show);
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +142,32 @@ export function LogoAndUpiForm({ shop, onSaved, submitLabel = "Save" }: { shop: 
     try { await upload.mutateAsync(file); toast(file ? "Logo updated" : "Logo removed"); }
     catch (err) { setError(errMsg(err)); }
   }
+
+  return (
+    <div className="space-y-3">
+      <FormError message={error} />
+      <div className="flex items-center gap-5">
+        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-white">
+          {shop.logo_url ? <img src={shop.logo_url} alt="Shop logo" className="h-full w-full object-contain" /> : <Building2 className="h-8 w-8 text-text-3" aria-hidden />}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { void pick(e.target.files?.[0] ?? null); e.target.value = ""; }} />
+          <Button type="button" variant="secondary" size="md" loading={upload.isPending} onClick={() => fileRef.current?.click()}>
+            <ImagePlus className="h-4 w-4" aria-hidden />{shop.logo_url ? "Change logo" : "Upload logo"}
+          </Button>
+          {shop.logo_url && <Button type="button" variant="ghost" size="md" onClick={() => void pick(null)}><Trash2 className="h-4 w-4" aria-hidden />Remove</Button>}
+        </div>
+      </div>
+      <p className="text-sm text-text-2">PNG or JPG. A dark logo on a white or clear background prints best on thermal paper.</p>
+    </div>
+  );
+}
+
+export function LogoAndUpiForm({ shop, onSaved, submitLabel = "Save" }: { shop: Shop; onSaved?: () => void; submitLabel?: string }) {
+  const patch = usePatchShop();
+  const canUpi = useAuth((s) => s.can("shop.payment_details"));
+  const toast = useToast((s) => s.show);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -156,21 +181,10 @@ export function LogoAndUpiForm({ shop, onSaved, submitLabel = "Save" }: { shop: 
 
   return (
     <form onSubmit={submit}>
-      <Section title="Logo and UPI" description="Your logo goes on bills. Your UPI ID makes a payment QR on every bill."
+      <Section title="Logo and UPI" description="Your logo is printed on bills. Your UPI ID makes a payment QR at checkout."
         footer={<Button type="submit" size="md" loading={patch.isPending}>{submitLabel}</Button>}>
         <FormError message={error} />
-        <div className="flex items-center gap-5">
-          <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-surface-2">
-            {shop.logo_url ? <img src={shop.logo_url} alt="Shop logo" className="h-full w-full object-contain" /> : <Building2 className="h-8 w-8 text-text-3" aria-hidden />}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => void pick(e.target.files?.[0] ?? null)} />
-            <Button type="button" variant="secondary" size="md" loading={upload.isPending} onClick={() => fileRef.current?.click()}>
-              <ImagePlus className="h-4 w-4" aria-hidden />{shop.logo_url ? "Change logo" : "Upload logo"}
-            </Button>
-            {shop.logo_url && <Button type="button" variant="ghost" size="md" onClick={() => void pick(null)}><Trash2 className="h-4 w-4" aria-hidden />Remove</Button>}
-          </div>
-        </div>
+        <LogoPicker shop={shop} />
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="UPI ID" name="upi_vpa" defaultValue={shop.upi_vpa ?? ""} placeholder="yourshop@okaxis" disabled={!canUpi}
             hint={canUpi ? undefined : "Only the owner can change payment details."} />
