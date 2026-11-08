@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 
-export interface ReceiptLine { name: string; variant_name: string | null; hsn: string | null; qty: string; unit: string; unit_price: string; discount: string; taxable: string; tax_rate: string; line_total: string }
+export interface ReceiptLine { id: string; returned_qty: string; name: string; variant_name: string | null; hsn: string | null; qty: string; unit: string; unit_price: string; discount: string; taxable: string; tax_rate: string; line_total: string }
 export interface Receipt {
   id: string; number: string; doc_type: string; title: string; composition_note: string | null; status: string;
-  cancel_reason: string | null; is_edited: boolean; issued_at: string; handed_over: boolean;
+  cancel_reason: string | null; is_edited: boolean; issued_at: string; handed_over: boolean; customer_id: string | null;
   shop: { name: string; legal_name: string | null; address: string; state: string; phone: string | null; gstin: string | null; logo_url: string | null; upi: string | null };
   buyer: { name: string | null; phone: string | null; gstin: string | null; address: string | null } | null;
   place_of_supply: string; supply_type: string; state_tax_label: string; reverse_charge: string; delivery_address: string | null;

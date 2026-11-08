@@ -822,6 +822,7 @@ def receipt(
         "is_edited": inv.is_edited,
         "issued_at": inv.issued_at,
         "handed_over": inv.handed_over_at is not None,
+        "customer_id": None if public else inv.customer_id,
         "shop": {
             "name": shop.trade_name or shop.name,
             "legal_name": shop.legal_name,
@@ -847,6 +848,8 @@ def receipt(
         "delivery_address": inv.delivery_address,
         "lines": [
             {
+                "id": ln.id,
+                "returned_qty": ln.returned_qty,
                 "name": ln.name,
                 "variant_name": ln.variant_name,
                 "hsn": ln.hsn_code,

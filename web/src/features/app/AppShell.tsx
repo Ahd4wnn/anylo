@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, Home, LogOut, Package, ReceiptText, Settings, ShoppingCart, Store, Users } from "lucide-react";
+import { BarChart3, ChevronDown, Home, LogOut, Package, ReceiptText, Settings, ShoppingCart, Store, Users, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/features/auth/store";
@@ -10,7 +10,8 @@ const NAV = [
   { to: "/pos", label: "Sell", icon: ShoppingCart },
   { to: "/app/sales", label: "Sales", icon: ReceiptText },
   { to: "/app/items", label: "Items", icon: Package },
-  { to: "/app/customers", label: "Customers", icon: Users, soon: true },
+  { to: "/app/customers", label: "Customers", icon: Users },
+  { to: "/app/money", label: "Money", icon: Wallet },
   { to: "/app/reports", label: "Reports", icon: BarChart3, soon: true },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
@@ -81,7 +82,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur sm:px-6">
           <span className="lg:hidden"><Logo size={28} /></span>
           <ShopSwitcher />
-          <button onClick={logout} className="ml-auto grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Log out">
+          <NavLink to="/app/settings" className="ml-auto grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Settings">
+            <Settings className="h-5 w-5" />
+          </NavLink>
+          <button onClick={logout} className="grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Log out">
             <LogOut className="h-5 w-5" />
           </button>
         </header>
@@ -93,7 +97,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">{children ?? <Outlet />}</main>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-border bg-surface lg:hidden" aria-label="Main">
-        {NAV.filter((n) => !["Customers", "Reports"].includes(n.label)).map((n) => <NavItem key={n.to} {...n} compact />)}
+        {NAV.filter((n) => !["Reports", "Settings"].includes(n.label)).map((n) => <NavItem key={n.to} {...n} compact />)}
       </nav>
       <Toaster />
     </div>

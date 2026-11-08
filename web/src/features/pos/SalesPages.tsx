@@ -10,6 +10,7 @@ import { Button } from "@/ui/Button";
 import { Logo } from "@/ui/Logo";
 import { Badge, Dialog, PageHeader, useToast } from "@/ui/primitives";
 import { useInvoice, type InvoicePage, type Receipt } from "./api";
+import { CreditNotesFor, ReturnDialog } from "@/features/money/ReturnDialog";
 import { ReceiptActions, UpiQr } from "./PaymentSheet";
 
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
@@ -132,6 +133,8 @@ export function InvoiceDetail() {
   const toast = useToast((s) => s.show);
   const qc = useQueryClient();
   const canCancel = useAuth((s) => s.can("invoice.cancel"));
+  const canReturn = useAuth((s) => s.can("credit_note.create"));
+  const [returning, setReturning] = useState(false);
   const { data: r, isLoading } = useInvoice(id);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,11 +151,17 @@ export function InvoiceDetail() {
     <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-center justify-between gap-3">
         <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-sm font-semibold text-text-2 hover:text-text"><ArrowLeft className="h-4 w-4" aria-hidden />Back</button>
-        {canCancel && r.status === "issued" && <Button variant="ghost" size="md" onClick={() => setCancelling(true)}>Cancel bill</Button>}
+        <div className="flex gap-2">
+          {canReturn && r.status === "issued" && r.lines.some((l) => Number(l.returned_qty) < Number(l.qty)) && <Button variant="secondary" size="md" onClick={() => setReturning(true)}>Return items</Button>}
+          {canCancel && r.status === "issued" && <Button variant="ghost" size="md" onClick={() => setCancelling(true)}>Cancel bill</Button>}
+        </div>
       </div>
       {r.status === "issued" && <ReceiptActions r={r} />}
       {r.cancel_reason && <p className="rounded-lg bg-surface-2 px-4 py-3 text-sm text-text-2">Cancelled: {r.cancel_reason}</p>}
       <ReceiptView r={r} />
+      <CreditNotesFor invoiceId={r.id} />
+      {r.customer_id && <Link to={`/app/customers/${r.customer_id}`} className="block text-center text-sm font-semibold text-primary hover:underline">View customer</Link>}
+      {returning && <ReturnDialog r={r} open={returning} onClose={() => setReturning(false)} />}
       <Dialog open={cancelling} onClose={() => setCancelling(false)} title={`Cancel ${r.number}?`}>
         <form onSubmit={cancel} className="space-y-4">
           <p className="text-text-2">The number stays in your records as cancelled and the stock goes back. Bills can only be cancelled on the day they were made; after that use a return.</p>

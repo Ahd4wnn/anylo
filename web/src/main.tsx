@@ -18,6 +18,8 @@ import { PosPage } from "@/features/pos/PosPage";
 import { InvoiceDetail, PublicInvoicePage, SalesPage } from "@/features/pos/SalesPages";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import "@/styles/index.css";
+import { CustomerDetail, CustomersPage } from "@/features/money/CustomersPages";
+import { MoneyPage } from "@/features/money/MoneyPages";
 
 const Spinner = () => (
   <div className="grid min-h-dvh place-items-center bg-bg"><Loader2 className="h-6 w-6 animate-spin text-brand" aria-label="Loading" /></div>
@@ -59,6 +61,9 @@ const router = createBrowserRouter([
       { path: "items/:id", element: <ProductEditor /> },
       { path: "sales", element: <SalesPage /> },
       { path: "sales/:id", element: <InvoiceDetail /> },
+      { path: "customers", element: <CustomersPage /> },
+      { path: "customers/:id", element: <CustomerDetail /> },
+      { path: "money/*", element: <MoneyPage /> },
       { path: "settings/*", element: <SettingsPage /> },
     ],
   },

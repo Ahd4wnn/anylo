@@ -11,7 +11,7 @@ import { computeInvoice } from "@/lib/gst";
 import { formatINR } from "@/lib/money";
 import { Button } from "@/ui/Button";
 import { Logo } from "@/ui/Logo";
-import { Dialog, Toaster, Toggle, useToast } from "@/ui/primitives";
+import { Badge, Dialog, Toaster, Toggle, useToast } from "@/ui/primitives";
 import { useHeld } from "./api";
 import { useCart, type CartLine } from "./cart";
 import { CameraButton, CameraScanner, cameraScanSupported, useHidScanner, voiceScore, VoiceButton } from "./inputs";
@@ -323,6 +323,36 @@ export function PosPage() {
   );
 }
 
+interface Match { id: string; name: string | null; phone: string | null; gstin: string | null; billing_address: string | null; balance: string }
+
+/** Returning customers from the first digits of their mobile, so nobody has to say the full number every visit. */
+function ReturningCustomers({ phone, onPick }: { phone: string; onPick: (m: Match) => void }) {
+  const { data } = useQuery({
+    queryKey: ["customer-lookup", phone],
+    queryFn: () => api<Match[]>(`/customers/lookup?phone=${phone}`),
+    enabled: phone.length >= 5,
+    staleTime: 30_000,
+  });
+  if (phone.length < 5 || !data?.length) return null;
+  const exact = data.length === 1 && data[0].phone === phone;
+  return (
+    <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border" aria-label="Returning customers">
+      {data.map((m) => (
+        <li key={m.id}>
+          <button type="button" onClick={() => onPick(m)} className={`flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-2 ${exact ? "bg-tint" : ""}`}>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{m.name || "No name"}</span>
+              <span className="tnum block text-sm text-text-2">{m.phone}</span>
+            </span>
+            {Number(m.balance) > 0 && <Badge tone="warning">Due {formatINR(m.balance, { always: true })}</Badge>}
+            {Number(m.balance) < 0 && <Badge tone="success">Credit {formatINR(String(-Number(m.balance)), { always: true })}</Badge>}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CustomerForm({ onDone, shopState }: { onDone: () => void; shopState: string }) {
   const cart = useCart();
   const c = cart.customer;
@@ -331,7 +361,10 @@ function CustomerForm({ onDone, shopState }: { onDone: () => void; shopState: st
   return (
     <div className="space-y-3">
       <input value={c.phone} onChange={(e) => { const phone = e.target.value.replace(/\D/g, "").slice(0, 10); setC({ phone }); }}
-        inputMode="numeric" placeholder="Mobile number" aria-label="Customer mobile" autoFocus className={`${cell} h-12 w-full`} />
+        inputMode="numeric" placeholder="Mobile number (first 5 digits find returning customers)" aria-label="Customer mobile" autoFocus className={`${cell} h-12 w-full`} />
+      <ReturningCustomers phone={c.phone} onPick={(m) => {
+        cart.set({ customer: { phone: m.phone ?? "", name: m.name ?? "", gstin: m.gstin ?? "", address: m.billing_address ?? "" }, b2b: !!m.gstin });
+      }} />
       <input value={c.name} onChange={(e) => setC({ name: e.target.value })} placeholder="Name (optional)" aria-label="Customer name" className={`${cell} h-12 w-full`} />
       <Toggle checked={cart.b2b} onChange={(b2b) => cart.set({ b2b })} label="Business customer (B2B)" hint="Shows their GSTIN on the tax invoice." />
       {cart.b2b && (
