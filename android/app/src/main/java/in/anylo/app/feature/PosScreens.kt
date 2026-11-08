@@ -40,7 +40,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PauseCircle
@@ -51,6 +50,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -183,7 +183,8 @@ fun PosScreen(app: AppState) {
     var picking by remember { mutableStateOf<ProductDto?>(null) }
     var customOpen by remember { mutableStateOf(false) }
     var heldOpen by remember { mutableStateOf(false) }
-    var paying by remember { mutableStateOf(false) }
+    // Amount fixed when the sheet opens: saving clears the cart, and the success view must outlive it.
+    var paying by remember { mutableStateOf<BigDecimal?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val prefs = remember { ctx.getSharedPreferences("anylo_pos", Context.MODE_PRIVATE) }
     var view by remember { mutableStateOf(runCatching { ItemView.valueOf(prefs.getString("view", null)!!) }.getOrDefault(ItemView.Grid)) }
@@ -229,7 +230,7 @@ fun PosScreen(app: AppState) {
     val count = cart.state.lines.size
 
     if (showCart) {
-        CartView(app, scheme, canEditPrice, onBack = { showCart = false }, onPay = { paying = true }, onHeld = { heldOpen = true }, onMessage = { message = it })
+        CartView(app, scheme, canEditPrice, onBack = { showCart = false }, onPay = { paying = totals?.grandTotal }, onHeld = { heldOpen = true }, onMessage = { message = it })
     } else Column(Modifier.fillMaxSize().statusBarsPadding()) {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
@@ -300,7 +301,15 @@ fun PosScreen(app: AppState) {
     }
     if (customOpen) CustomItemDialog(rates, scheme == "regular", onClose = { customOpen = false }) { cart.add(it); message = "Added ${it.name}" }
     if (heldOpen) HeldDialog(app, onClose = { heldOpen = false }, onMessage = { message = it })
-    if (paying && totals != null) PaymentDialog(app, shop, totals.grandTotal, onClose = { paying = false; if (cart.state.lines.isEmpty()) showCart = false })
+    paying?.let { amount ->
+        PaymentDialog(app, shop, amount, onClose = { paying = null; if (cart.state.lines.isEmpty()) showCart = false }) { r ->
+            paying = null; showCart = false
+            val due = dec(r.totals.dueTotal)
+            message = "Saved ${r.number} · ${rupees(dec(r.totals.grandTotal))}" + if (due.signum() > 0) " · Due ${rupees(due)}" else ""
+            val printer = (ctx.applicationContext as AnyloApp).printer
+            if (printer.rememberedMac != null) scope.launch { printBill(app, printer, r).onFailure { message = "Saved ${r.number}. Couldn't print: ${it.message}" } }
+        }
+    }
 }
 
 @Composable
@@ -352,6 +361,7 @@ private fun CartView(app: AppState, scheme: String, canEditPrice: Boolean, onBac
             TextButton(onClick = onHeld) { Text("Held bills") }
         }
         LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (s.lines.isEmpty()) item { Text("No items on this bill yet.", Modifier.fillMaxWidth().padding(vertical = 32.dp), color = Anylo.colors.text2, textAlign = TextAlign.Center) }
             items(s.lines, key = { it.key }) { l ->
                 Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface).padding(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -373,6 +383,11 @@ private fun CartView(app: AppState, scheme: String, canEditPrice: Boolean, onBac
                     Text(rupees(dec(l.qty) * dec(l.unitPrice)), Modifier.align(Alignment.End), fontWeight = FontWeight.SemiBold)
                 }
             }
+            item {
+                OutlinedButton(onClick = onBack, Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Filled.Add, null); Spacer(Modifier.width(8.dp)); Text("Add more items", fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
         Column(Modifier.fillMaxWidth().background(Anylo.colors.surface).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val c = s.customer
@@ -387,7 +402,7 @@ private fun CartView(app: AppState, scheme: String, canEditPrice: Boolean, onBac
             totals?.let { t ->
                 if (scheme == "regular") Row { Text("GST", Modifier.weight(1f), color = Anylo.colors.text2); Text(rupees(t.cgstTotal + t.sgstTotal + t.igstTotal + t.cessTotal), color = Anylo.colors.text2) }
                 if (t.discountTotal.signum() > 0) Row { Text("Discount", Modifier.weight(1f), color = Anylo.colors.text2); Text("−" + rupees(t.discountTotal), color = Anylo.colors.text2) }
-            } ?: ErrorBanner("Check the quantities, prices and discount.")
+            } ?: if (s.lines.isNotEmpty()) ErrorBanner("Check the quantities, prices and discount.") else Unit
             PrimaryButton("Pay ${totals?.let { rupees(it.grandTotal) } ?: ""}", onPay, enabled = totals != null && totals.grandTotal.signum() > 0)
         }
     }
@@ -469,7 +484,7 @@ private fun HeldDialog(app: AppState, onClose: () -> Unit, onMessage: (String) -
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose: () -> Unit) {
+private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose: () -> Unit, onSaved: (Receipt) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val appCtx = ctx.applicationContext as AnyloApp
@@ -482,7 +497,6 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var done by remember { mutableStateOf<Receipt?>(null) }
-    var note by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { if (cart.idempotencyKey == null) cart.idempotencyKey = UUID.randomUUID().toString() }
 
     val payments = when (mode) {
@@ -499,10 +513,7 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
     fun submit(approval: String?) = scope.launch {
         busy = true; error = null
         runCatching { app.session.sales.checkout(cart.checkoutBody(payments, cart.idempotencyKey!!, approval)) }
-            .onSuccess { r ->
-                done = r; cart.clear()
-                if (appCtx.printer.rememberedMac != null) printBill(app, appCtx.printer, r).onFailure { note = it.message }
-            }
+            .onSuccess { r -> done = r; cart.clear() }
             .onFailure {
                 val (code, msg) = app.session.errorOf(it)
                 if (code == "invoice.approval_required") pin = "" else error = if (it is java.io.IOException) "Couldn't save the bill. Check your connection and try again; it won't be saved twice." else msg
@@ -513,6 +524,8 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
     // Slides up from the bottom; swipe down or the close button dismisses it, except while the bill is being saved.
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { it != SheetValue.Hidden || !busy })
     val close: () -> Unit = { scope.launch { sheet.hide() }.invokeOnCompletion { onClose() } }
+    // A saved bill closes the sheet straight away: the counter is ready for the next customer.
+    LaunchedEffect(done) { done?.let { sheet.hide(); onSaved(it) } }
     ModalBottomSheet(onDismissRequest = onClose, sheetState = sheet, containerColor = Anylo.colors.bg,
         dragHandle = { BottomSheetDefaults.DragHandle(color = Anylo.colors.border) }) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -524,15 +537,7 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             val r = done
             when {
-                r != null -> {
-                    Icon(Icons.Filled.CheckCircle, null, Modifier.size(56.dp).align(Alignment.CenterHorizontally), tint = Anylo.colors.success)
-                    Text(rupees(dec(r.totals.grandTotal)), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.CenterHorizontally))
-                    Text("${r.title} · ${r.number}", color = Anylo.colors.text2, modifier = Modifier.align(Alignment.CenterHorizontally))
-                    if (dec(r.totals.dueTotal).signum() > 0) Text("Due: ${rupees(dec(r.totals.dueTotal))}", color = Anylo.colors.warning, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally))
-                    note?.let { Text(it, color = Anylo.colors.text2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
-                    ReceiptActions(app, r) { note = it }
-                    PrimaryButton("New bill", close)
-                }
+                r != null -> Text("Saved ${r.number}", color = Anylo.colors.success, fontWeight = FontWeight.SemiBold)
                 pin != null -> {
                     Text("This discount is above your limit. Ask the owner or manager to enter their PIN.", color = Anylo.colors.text2)
                     ErrorBanner(error)
@@ -629,11 +634,12 @@ private fun ItemTile(p: ProductDto, view: ItemView, onClick: () -> Unit) {
     }
     val big = view == ItemView.Tiles
     Column(base.fillMaxWidth().aspectRatio(1f).padding(if (big) 14.dp else 10.dp)) {
-        Initial(p.name, if (big) 40 else 30)
+        // The 3-across grid has no room for the badge once the phone's text size is above 100%.
+        if (big) Initial(p.name, 40)
         Spacer(Modifier.weight(1f))
         Text(p.name, fontWeight = FontWeight.Medium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis,
-            style = if (big) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium)
-        Text(price, fontWeight = FontWeight.SemiBold, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
+            style = if (big) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodySmall)
+        Text(price, fontWeight = FontWeight.SemiBold, maxLines = 1, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
         // Always reserve the stock line so every tile lays out identically.
         Text(if (out) "Out of stock" else " ", color = Anylo.colors.warning, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
