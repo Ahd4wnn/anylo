@@ -13,6 +13,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 // DTOs mirror backend/app/schemas (OpenAPI is the contract). snake_case on the wire.
 
@@ -51,7 +52,7 @@ import retrofit2.http.Path
     val id: String, val name: String, @SerialName("business_type") val businessType: String,
     val phone: String? = null, @SerialName("address_line1") val address: String? = null,
     val city: String? = null, val pincode: String? = null, @SerialName("state_name") val stateName: String,
-    @SerialName("upi_vpa") val upi: String? = null, val tax: TaxProfile,
+    @SerialName("upi_vpa") val upi: String? = null, @SerialName("upi_payee_name") val upiPayeeName: String? = null, val tax: TaxProfile,
 )
 @Serializable data class ShopPatch(
     val name: String? = null, val phone: String? = null, @SerialName("address_line1") val address: String? = null,
@@ -107,7 +108,7 @@ interface AnyloApi {
     @SerialName("category_name") val categoryName: String? = null, val brand: String? = null,
     @SerialName("hsn_code") val hsnCode: String? = null, @SerialName("tax_rate_id") val taxRateId: String? = null,
     @SerialName("tax_rate") val taxRate: String? = null, @SerialName("unit_code") val unitCode: String = "NOS",
-    @SerialName("track_stock") val trackStock: Boolean = true, @SerialName("thumb_url") val thumbUrl: String? = null,
+    @SerialName("track_stock") val trackStock: Boolean = true, @SerialName("price_includes_tax") val priceIncludesTax: Boolean = true, @SerialName("thumb_url") val thumbUrl: String? = null,
     @SerialName("missing_tax_info") val missingTaxInfo: Boolean = false, val variants: List<VariantDto> = emptyList(),
 )
 @Serializable data class ProductPage(val items: List<ProductDto>, @SerialName("next_cursor") val nextCursor: String? = null, val total: Int)
@@ -117,6 +118,7 @@ interface AnyloApi {
 @Serializable data class RateDto(val id: String, val label: String, val rate: String, val kind: String)
 @Serializable data class AdjustReq(@SerialName("variant_id") val variantId: String, val mode: String, val qty: String, val kind: String = "adjustment", val reason: String? = null)
 @Serializable data class BarcodeDto(val barcode: String)
+@Serializable data class SnapDto(@SerialName("identified_name") val identifiedName: String, val matches: List<ProductDto> = emptyList())
 
 interface CatalogueApi {
     @GET("products") suspend fun products(@retrofit2.http.Query("q") q: String?, @retrofit2.http.Query("low_stock") low: Boolean = false, @retrofit2.http.Query("limit") limit: Int = 200): ProductPage
@@ -129,4 +131,76 @@ interface CatalogueApi {
     @GET("gst-rates") suspend fun rates(): List<RateDto>
     @POST("stock/adjustments") suspend fun adjust(@Body b: AdjustReq): VariantDto
     @POST("barcodes/generate") suspend fun generateBarcode(): BarcodeDto
+    @Multipart @POST("products/snap") suspend fun snap(@Part file: MultipartBody.Part): SnapDto
+}
+
+// --- sales (backend/app/schemas/sales.py; receipt model from services/sales.receipt) ---
+
+/** Cart shape shared with web held bills (web/src/features/pos/cart.ts), so a bill held on one device resumes on another. */
+@Serializable data class CustomItem(
+    val name: String, @SerialName("tax_rate_id") val taxRateId: String? = null,
+    @SerialName("hsn_code") val hsnCode: String? = null, @SerialName("unit_code") val unitCode: String = "NOS",
+)
+@Serializable data class CartLine(
+    val key: String, val variantId: String? = null, val custom: CustomItem? = null, val name: String, val variantName: String? = null,
+    val unit: String, val qty: String, val unitPrice: String, val salePrice: String, val mrp: String? = null, val rate: String, val inclusive: Boolean,
+)
+@Serializable data class CartCustomer(val name: String = "", val phone: String = "", val gstin: String = "", val address: String = "")
+@Serializable data class CartSnapshot(
+    val lines: List<CartLine> = emptyList(), val customer: CartCustomer = CartCustomer(), val b2b: Boolean = false,
+    val discountType: String = "flat", val discountValue: String = "", val remarks: String = "",
+)
+
+@Serializable data class LineReq(@SerialName("variant_id") val variantId: String? = null, val custom: CustomItem? = null, val qty: String, @SerialName("unit_price") val unitPrice: String)
+@Serializable data class CustomerReq(val name: String? = null, val phone: String? = null, val gstin: String? = null, val address: String? = null)
+@Serializable data class PaymentReq(val method: String, val amount: String, val reference: String? = null)
+@Serializable data class CheckoutReq(
+    val lines: List<LineReq>, val customer: CustomerReq? = null, @SerialName("discount_type") val discountType: String? = null,
+    @SerialName("discount_value") val discountValue: String = "0", val remarks: String? = null, val payments: List<PaymentReq>,
+    @SerialName("idempotency_key") val idempotencyKey: String, @SerialName("approval_pin") val approvalPin: String? = null,
+)
+
+@Serializable data class ReceiptShop(val name: String, val address: String = "", val phone: String? = null, val gstin: String? = null, @SerialName("logo_url") val logoUrl: String? = null)
+@Serializable data class ReceiptBuyer(val name: String? = null, val phone: String? = null, val gstin: String? = null)
+@Serializable data class ReceiptLine(
+    val name: String, @SerialName("variant_name") val variantName: String? = null, val hsn: String? = null, val qty: String, val unit: String,
+    @SerialName("unit_price") val unitPrice: String, val discount: String, @SerialName("tax_rate") val taxRate: String, @SerialName("line_total") val lineTotal: String,
+)
+@Serializable data class TaxRow(val rate: String, val taxable: String, val cgst: String, val sgst: String, val igst: String)
+@Serializable data class Totals(
+    @SerialName("discount_total") val discountTotal: String, @SerialName("taxable_total") val taxableTotal: String,
+    @SerialName("cgst_total") val cgstTotal: String, @SerialName("sgst_total") val sgstTotal: String, @SerialName("igst_total") val igstTotal: String,
+    @SerialName("cess_total") val cessTotal: String, @SerialName("round_off") val roundOff: String, @SerialName("grand_total") val grandTotal: String,
+    @SerialName("paid_total") val paidTotal: String, @SerialName("due_total") val dueTotal: String,
+)
+@Serializable data class PaymentLine(val method: String, val amount: String)
+@Serializable data class Receipt(
+    val id: String, val number: String, val title: String, @SerialName("composition_note") val compositionNote: String? = null,
+    val status: String, @SerialName("cancel_reason") val cancelReason: String? = null, @SerialName("issued_at") val issuedAt: String,
+    @SerialName("handed_over") val handedOver: Boolean, val shop: ReceiptShop, val buyer: ReceiptBuyer? = null,
+    @SerialName("place_of_supply") val placeOfSupply: String, @SerialName("supply_type") val supplyType: String,
+    @SerialName("state_tax_label") val stateTaxLabel: String, @SerialName("reverse_charge") val reverseCharge: String,
+    val lines: List<ReceiptLine>, @SerialName("tax_summary") val taxSummary: List<TaxRow>, val totals: Totals,
+    @SerialName("amount_in_words") val amountInWords: String, val payments: List<PaymentLine>, val remarks: String? = null,
+    val footer: String, @SerialName("public_url") val publicUrl: String, @SerialName("upi_due_uri") val upiDueUri: String? = null,
+)
+@Serializable data class InvoiceRow(
+    val id: String, val number: String, @SerialName("issued_at") val issuedAt: String, @SerialName("buyer_name") val buyerName: String? = null,
+    @SerialName("buyer_phone") val buyerPhone: String? = null, @SerialName("grand_total") val grandTotal: String,
+    @SerialName("due_total") val dueTotal: String, val status: String, val methods: List<String> = emptyList(),
+)
+@Serializable data class InvoicePage(val items: List<InvoiceRow>, val total: Int, @SerialName("sales_total") val salesTotal: String)
+@Serializable data class HeldReq(val label: String, val payload: CartSnapshot)
+@Serializable data class HeldDto(val id: String, val label: String, val payload: CartSnapshot, @SerialName("created_by_name") val createdByName: String? = null)
+@Serializable data class CancelReq(val reason: String)
+
+interface SalesApi {
+    @POST("invoices") suspend fun checkout(@Body b: CheckoutReq): Receipt
+    @GET("invoices") suspend fun list(@Query("q") q: String?, @Query("from") from: String?, @Query("to") to: String?): InvoicePage
+    @GET("invoices/{id}") suspend fun get(@Path("id") id: String): Receipt
+    @POST("invoices/{id}/cancel") suspend fun cancel(@Path("id") id: String, @Body b: CancelReq): Receipt
+    @POST("invoices/{id}/handover") suspend fun handover(@Path("id") id: String)
+    @GET("held-bills") suspend fun held(): List<HeldDto>
+    @POST("held-bills") suspend fun hold(@Body b: HeldReq): HeldDto
+    @DELETE("held-bills/{id}") suspend fun unhold(@Path("id") id: String)
 }

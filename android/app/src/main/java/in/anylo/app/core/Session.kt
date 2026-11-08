@@ -88,6 +88,7 @@ class Session(private val store: TokenStore) {
         .build()
     val api: AnyloApi = retrofit.create(AnyloApi::class.java)
     val catalogue: CatalogueApi = retrofit.create(CatalogueApi::class.java)
+    val sales: SalesApi = retrofit.create(SalesApi::class.java)
 
     /** true = new tokens; false = session really invalid (logged out). Network errors throw. */
     suspend fun refresh(): Boolean {
@@ -116,13 +117,17 @@ class Session(private val store: TokenStore) {
         get() = store.shopId
         set(v) { store.shopId = v }
 
-    /** Plain-language message from any API/network failure. */
-    fun messageOf(e: Throwable): String = when (e) {
-        is HttpException -> runCatching {
-            val body = json.decodeFromString(ErrorBody.serializer(), e.response()?.errorBody()?.string().orEmpty())
-            (body.detail as? JsonPrimitive)?.content
-        }.getOrNull() ?: if (e.code() == 422) "Please check the details you entered." else "Something went wrong (${e.code()})."
-        is IOException -> "Can't reach Anylo. Check your internet connection."
-        else -> "Something went wrong. Please try again."
+    /** Machine code (e.g. "invoice.approval_required") and plain-language message. Reads the error body once: OkHttp can't re-read it. */
+    fun errorOf(e: Throwable): Pair<String?, String> = when (e) {
+        is HttpException -> {
+            val body = runCatching { json.decodeFromString(ErrorBody.serializer(), e.response()?.errorBody()?.string().orEmpty()) }.getOrNull()
+            body?.code to ((body?.detail as? JsonPrimitive)?.content
+                ?: if (e.code() == 422) "Please check the details you entered." else "Something went wrong (${e.code()}).")
+        }
+        is IOException -> null to "Can't reach Anylo. Check your internet connection."
+        else -> null to "Something went wrong. Please try again."
     }
+
+    /** Plain-language message from any API/network failure. */
+    fun messageOf(e: Throwable): String = errorOf(e).second
 }

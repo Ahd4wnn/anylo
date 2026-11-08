@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -18,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
@@ -35,9 +35,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -167,7 +167,7 @@ fun OnboardingScreen(app: AppState, me: Me) {
     }
 }
 
-private enum class Tab(val label: String, val icon: ImageVector) { Home("Home", Icons.Filled.Home), Sell("Sell", Icons.Filled.ShoppingCart), Items("Items", Icons.Filled.Inventory2), Settings("Settings", Icons.Filled.Settings) }
+private enum class Tab(val label: String, val icon: ImageVector) { Home("Home", Icons.Filled.Home), Sell("Sell", Icons.Filled.ShoppingCart), Sales("Sales", Icons.AutoMirrored.Filled.ReceiptLong), Items("Items", Icons.Filled.Inventory2), Settings("Settings", Icons.Filled.Settings) }
 
 @Composable
 fun Shell(app: AppState, me: Me) {
@@ -178,7 +178,8 @@ fun Shell(app: AppState, me: Me) {
                 Tab.Home -> HomeScreen(app, me)
                 Tab.Settings -> SettingsScreen(app, me)
                 Tab.Items -> ItemsScreen(app)
-                else -> Soon(tab.label)
+                Tab.Sell -> PosScreen(app)
+                Tab.Sales -> SalesScreen(app)
             }
         }
         NavigationBar(containerColor = Anylo.colors.surface) {
@@ -186,13 +187,6 @@ fun Shell(app: AppState, me: Me) {
                 NavigationBarItem(selected = tab == t, onClick = { tab = t }, icon = { Icon(t.icon, null) }, label = { Text(t.label) })
             }
         }
-    }
-}
-
-@Composable
-private fun Soon(what: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text("$what is coming in the next update.", color = Anylo.colors.text2)
     }
 }
 

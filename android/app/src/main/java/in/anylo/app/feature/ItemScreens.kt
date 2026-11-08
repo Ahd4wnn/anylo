@@ -69,7 +69,7 @@ import java.io.File
 import java.math.BigDecimal
 
 /** Last catalogue fetched, kept as JSON so the list opens instantly and offline (Room is not needed for this). */
-private object CatalogueCache {
+internal object CatalogueCache {
     private fun file(ctx: Context) = File(ctx.filesDir, "catalogue.json")
     fun load(app: AppState, ctx: Context): List<ProductDto> = runCatching {
         app.session.json.decodeFromString(ListSerializer(ProductDto.serializer()), file(ctx).readText())
