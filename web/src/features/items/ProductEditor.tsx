@@ -61,7 +61,7 @@ function AdjustDialog({ variant, unit, onClose }: { variant: Variant | null; uni
           {!!history.data?.length && (
             <div>
               <p className="mb-2 text-sm font-semibold">Recent changes</p>
-              <ul className="max-h-48 divide-y divide-border overflow-auto text-sm">
+              <ul className="divide-y divide-border text-sm">
                 {history.data.slice(0, 20).map((m) => (
                   <li key={m.id} className="flex justify-between gap-3 py-2">
                     <span className="capitalize text-text-2">{m.kind.replace("_", " ")}{m.reason ? ` · ${m.reason}` : ""}<br />

@@ -184,9 +184,12 @@ export function PaymentSheet({ open, total, onClose, buildBody }: {
             </p>
           )}
           {over && <p className="text-sm text-danger">Payments are more than the bill. Enter the bill amount; change is shown separately.</p>}
-          <Button className="w-full" size="xl" loading={busy} disabled={over || (due > 0 && !hasPhone)} onClick={() => void submit()}>
-            {due > 0 && mode !== "cash" ? `Save with ${formatINR(r2(due), { always: true })} due` : "Save bill"}
-          </Button>
+          {/* Pinned to the bottom of the popup so the main action is visible even on short screens. */}
+          <div className="sticky -bottom-6 -mx-6 -mb-6 border-t border-border bg-surface px-6 pb-6 pt-4">
+            <Button className="w-full" size="xl" loading={busy} disabled={over || (due > 0 && !hasPhone)} onClick={() => void submit()}>
+              {due > 0 && mode !== "cash" ? `Save with ${formatINR(r2(due), { always: true })} due` : "Save bill"}
+            </Button>
+          </div>
         </div>
       )}
     </Dialog>

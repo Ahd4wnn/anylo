@@ -263,7 +263,7 @@ fun PosScreen(app: AppState) {
         AlertDialog(onDismissRequest = { picking = null }, confirmButton = {}, dismissButton = { TextButton(onClick = { picking = null }) { Text("Cancel") } },
             title = { Text(p.name) },
             text = {
-                Column {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
                     p.variants.forEach { v ->
                         Row(Modifier.fillMaxWidth().clickable { cart.add(lineOf(p, v)); picking = null; message = "Added ${p.name}" }.padding(vertical = 14.dp)) {
                             Text(v.name ?: "Default", Modifier.weight(1f)); Text(rupees(dec(v.salePrice)), fontWeight = FontWeight.SemiBold)
@@ -418,7 +418,7 @@ private fun HeldDialog(app: AppState, onClose: () -> Unit, onMessage: (String) -
     AlertDialog(onDismissRequest = onClose, confirmButton = {}, dismissButton = { TextButton(onClick = onClose) { Text("Close") } },
         title = { Text("Held bills") },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 ErrorBanner(error)
                 if (held?.isEmpty() == true) Text("No held bills.", color = Anylo.colors.text2)
                 held?.forEach { h ->

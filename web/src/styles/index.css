@@ -9,6 +9,8 @@
   body { @apply bg-bg text-text; font-feature-settings: "cv11", "ss01"; }
   :focus-visible { outline: 2px solid rgb(var(--primary)); outline-offset: 2px; }
   .tnum { font-variant-numeric: tabular-nums; }
+  /* The page behind an open popup must not scroll along with it. */
+  body:has(dialog[open]) { overflow: hidden; }
 }
 
 @media (prefers-reduced-motion: reduce) {

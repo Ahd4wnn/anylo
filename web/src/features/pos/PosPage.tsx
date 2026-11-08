@@ -151,7 +151,7 @@ export function PosPage() {
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_440px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_440px]">
         {/* Catalogue */}
         <section className="flex min-h-0 flex-col p-3 sm:p-5">
           <div className="flex items-center gap-1 rounded-xl border border-border-strong bg-surface pl-3 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/15">

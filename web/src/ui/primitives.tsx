@@ -16,13 +16,14 @@ export function Dialog({ open, onClose, title, children }: { open: boolean; onCl
       ref={ref}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="w-[min(480px,calc(100vw-32px))] rounded-xl border border-border bg-surface p-0 text-text shadow-e2 backdrop:bg-text/30"
+      // Header stays put; only the body scrolls, inside the rounded frame (the dialog itself never scrolls).
+      className="max-h-[calc(100dvh-32px)] w-[min(480px,calc(100vw-32px))] overflow-hidden rounded-xl border border-border bg-surface p-0 text-text shadow-e2 backdrop:bg-text/30 open:flex open:flex-col"
     >
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <button onClick={onClose} className="grid h-9 w-9 place-items-center rounded-md text-text-2 hover:bg-surface-2" aria-label="Close"><X className="h-5 w-5" /></button>
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-6 py-4">
+        <h2 className="min-w-0 truncate text-lg font-semibold">{title}</h2>
+        <button onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-text-2 hover:bg-surface-2" aria-label="Close"><X className="h-5 w-5" /></button>
       </div>
-      <div className="p-6">{open && children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-6">{open && children}</div>
     </dialog>
   );
 }
@@ -60,7 +61,7 @@ export function Section({ title, description, children, footer }: { title: strin
   return (
     <section className="rounded-xl border border-border bg-surface">
       <div className="px-5 pt-5 sm:px-6 sm:pt-6">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <h2 className="min-w-0 truncate text-lg font-semibold">{title}</h2>
         {description && <p className="mt-1 text-sm text-text-2">{description}</p>}
       </div>
       <div className="space-y-5 p-5 sm:p-6">{children}</div>
