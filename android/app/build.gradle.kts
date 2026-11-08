@@ -40,8 +40,10 @@ android {
         create("dev") {
             dimension = "env"
             applicationIdSuffix = ".dev"
-            // Emulator alias for the laptop's localhost.
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/v1/\"")
+            // Emulator alias for the laptop's localhost. A USB phone uses `adb reverse tcp:8000 tcp:8000`
+            // and builds with -Panylo.apiUrl=http://localhost:8000/v1/
+            val apiUrl = (project.findProperty("anylo.apiUrl") as String?) ?: "http://10.0.2.2:8000/v1/"
+            buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
         }
         create("prod") {
             dimension = "env"

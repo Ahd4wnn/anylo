@@ -9,8 +9,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -69,15 +73,29 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import `in`.anylo.app.AnyloApp
 import `in`.anylo.app.AppState
 import `in`.anylo.app.core.CartLine
@@ -167,6 +185,9 @@ fun PosScreen(app: AppState) {
     var heldOpen by remember { mutableStateOf(false) }
     var paying by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    val prefs = remember { ctx.getSharedPreferences("anylo_pos", Context.MODE_PRIVATE) }
+    var view by remember { mutableStateOf(runCatching { ItemView.valueOf(prefs.getString("view", null)!!) }.getOrDefault(ItemView.Grid)) }
+    var viewMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         runCatching { app.session.catalogue.products(null).items }.onSuccess { products = it; CatalogueCache.save(app, ctx, it) }
@@ -231,25 +252,30 @@ fun PosScreen(app: AppState) {
             if (app.can("product.snap")) IconButton(onClick = { runCatching { snap.launch(null) }.onFailure { message = "Couldn't open the camera." } }) { Icon(Icons.Filled.CameraAlt, "Snap and find") }
         }
         val cats = products.mapNotNull { it.categoryName }.distinct().sorted()
-        LazyRow(Modifier.padding(vertical = 8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+        LazyRow(Modifier.weight(1f).padding(vertical = 8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             item { FilterChip(selected = category == null, onClick = { category = null }, label = { Text("All") }) }
             items(cats) { c -> FilterChip(selected = category == c, onClick = { category = if (category == c) null else c }, label = { Text(c) }) }
             item { FilterChip(selected = false, onClick = { customOpen = true }, label = { Text("+ Custom item") }) }
+        }
+            Box {
+                IconButton(onClick = { viewMenu = true }, Modifier.padding(end = 8.dp)) { Icon(view.icon, "Change view: ${view.label}") }
+                DropdownMenu(expanded = viewMenu, onDismissRequest = { viewMenu = false }) {
+                    ItemView.entries.forEach { v ->
+                        DropdownMenuItem(text = { Text(v.label, fontWeight = if (v == view) FontWeight.SemiBold else FontWeight.Normal) },
+                            leadingIcon = { Icon(v.icon, null, tint = if (v == view) Anylo.colors.primary else Anylo.colors.text2) },
+                            onClick = { view = v; viewMenu = false; prefs.edit().putString("view", v.name).apply() })
+                    }
+                }
+            }
         }
         val shown = products.filter { p ->
             (category == null || p.categoryName == category) &&
                 (q.isBlank() || p.name.contains(q, true) || p.variants.any { it.barcode == q.trim() || it.sku?.contains(q, true) == true })
         }
-        LazyVerticalGrid(GridCells.Adaptive(150.dp), Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        LazyVerticalGrid(GridCells.Fixed(view.columns), Modifier.weight(1f), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(shown, key = { it.id }) { p ->
-                Column(Modifier.clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface).clickable { add(p) }.padding(14.dp)) {
-                    Text(p.name, fontWeight = FontWeight.Medium, maxLines = 2)
-                    Spacer(Modifier.height(4.dp))
-                    Text(rupees(p.variants.minOfOrNull { dec(it.salePrice) } ?: BigDecimal.ZERO), fontWeight = FontWeight.SemiBold)
-                    if (!inStock(p)) Text("Out of stock", color = Anylo.colors.warning, style = MaterialTheme.typography.bodySmall)
-                }
-            }
+            items(shown, key = { it.id }) { p -> ItemTile(p, view) { add(p) } }
         }
         message?.let { Text(it, Modifier.fillMaxWidth().background(Anylo.colors.tint).padding(12.dp), textAlign = TextAlign.Center) }
         Row(Modifier.fillMaxWidth().background(Anylo.colors.surface).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -344,6 +370,7 @@ private fun CartView(app: AppState, scheme: String, canEditPrice: Boolean, onBac
                         if (canEditPrice || l.custom != null) SmallField(l.unitPrice, { v -> cart.setLine(l.key) { it.copy(unitPrice = v) } }, "Price", Modifier.width(100.dp))
                         else Text(rupees(dec(l.unitPrice)), fontWeight = FontWeight.SemiBold)
                     }
+                    Text(rupees(dec(l.qty) * dec(l.unitPrice)), Modifier.align(Alignment.End), fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -440,6 +467,7 @@ private fun HeldDialog(app: AppState, onClose: () -> Unit, onMessage: (String) -
         })
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose: () -> Unit) {
     val ctx = LocalContext.current
@@ -482,8 +510,17 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
         busy = false
     }
 
-    Dialog(onDismissRequest = { if (!busy) onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp).clip(RoundedCornerShape(20.dp)).background(Anylo.colors.bg).verticalScroll(rememberScrollState()).padding(20.dp),
+    // Slides up from the bottom; swipe down or the close button dismisses it, except while the bill is being saved.
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { it != SheetValue.Hidden || !busy })
+    val close: () -> Unit = { scope.launch { sheet.hide() }.invokeOnCompletion { onClose() } }
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = sheet, containerColor = Anylo.colors.bg,
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Anylo.colors.border) }) {
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(when { done != null -> "Bill saved"; pin != null -> "Approval needed"; else -> "Pay ${rupees(total)}" },
+                style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            IconButton(onClick = close, enabled = !busy) { Icon(Icons.Filled.Close, "Close") }
+        }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             val r = done
             when {
@@ -494,20 +531,26 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
                     if (dec(r.totals.dueTotal).signum() > 0) Text("Due: ${rupees(dec(r.totals.dueTotal))}", color = Anylo.colors.warning, fontWeight = FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally))
                     note?.let { Text(it, color = Anylo.colors.text2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
                     ReceiptActions(app, r) { note = it }
-                    PrimaryButton("New bill", onClose)
+                    PrimaryButton("New bill", close)
                 }
                 pin != null -> {
-                    Text("Approval needed", style = MaterialTheme.typography.titleLarge)
                     Text("This discount is above your limit. Ask the owner or manager to enter their PIN.", color = Anylo.colors.text2)
                     ErrorBanner(error)
                     AnyloField("Manager PIN", pin.orEmpty(), { pin = it.filter(Char::isDigit).take(6) }, password = true, keyboard = KeyboardType.NumberPassword)
                     PrimaryButton("Approve and save", { submit(pin) }, loading = busy, enabled = (pin?.length ?: 0) >= 4)
                 }
                 else -> {
-                    Text("Pay ${rupees(total)}", style = MaterialTheme.typography.titleLarge)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Equal-width segments: five chips don't fit a phone and "Due" wrapped one letter per line.
+                    Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("cash" to "Cash", "upi" to "UPI", "card" to "Card", "split" to "Split", "due" to "Due").forEach { (m, label) ->
-                            FilterChip(selected = mode == m, onClick = { mode = m }, label = { Text(label) })
+                            val on = mode == m
+                            Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(10.dp))
+                                .background(if (on) Anylo.colors.primarySoft else Anylo.colors.surface)
+                                .border(1.dp, if (on) Anylo.colors.primary else Anylo.colors.border, RoundedCornerShape(10.dp))
+                                .selectable(selected = on, role = Role.RadioButton, onClick = { mode = m }), contentAlignment = Alignment.Center) {
+                                Text(label, maxLines = 1, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
+                                    color = if (on) Anylo.colors.onPrimarySoft else Anylo.colors.text)
+                            }
                         }
                     }
                     ErrorBanner(error)
@@ -554,9 +597,52 @@ private fun PaymentDialog(app: AppState, shop: Shop?, total: BigDecimal, onClose
                     if (over) Text("Payments are more than the bill. Enter the bill amount; change is shown separately.", color = Anylo.colors.danger)
                     PrimaryButton(if (due.signum() > 0 && mode != "cash") "Save with ${rupees(due)} due" else "Save bill", { submit(null) },
                         loading = busy, enabled = !over && (due.signum() == 0 || hasPhone))
-                    SecondaryButton("Back", onClose, Modifier.fillMaxWidth())
                 }
             }
         }
+    }
+}
+
+enum class ItemView(val label: String, val columns: Int, val icon: ImageVector) {
+    Grid("Grid", 3, Icons.Filled.Apps), Tiles("Large tiles", 2, Icons.Filled.GridView), List("List", 1, Icons.AutoMirrored.Filled.ViewList),
+}
+
+/** Every tile has the same fixed shape (a square, or a fixed-height row), whatever its text or stock line. */
+@Composable
+private fun ItemTile(p: ProductDto, view: ItemView, onClick: () -> Unit) {
+    val price = rupees(p.variants.minOfOrNull { dec(it.salePrice) } ?: BigDecimal.ZERO)
+    val out = !inStock(p)
+    val base = Modifier.clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface)
+        .border(1.dp, Anylo.colors.border, RoundedCornerShape(14.dp)).clickable(onClick = onClick)
+    if (view == ItemView.List) {
+        Row(base.fillMaxWidth().height(68.dp).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Initial(p.name, 40)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(p.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (out) "Out of stock" else p.categoryName.orEmpty(), color = if (out) Anylo.colors.warning else Anylo.colors.text2,
+                    style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            }
+            Text(price, fontWeight = FontWeight.SemiBold)
+        }
+        return
+    }
+    val big = view == ItemView.Tiles
+    Column(base.fillMaxWidth().aspectRatio(1f).padding(if (big) 14.dp else 10.dp)) {
+        Initial(p.name, if (big) 40 else 30)
+        Spacer(Modifier.weight(1f))
+        Text(p.name, fontWeight = FontWeight.Medium, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis,
+            style = if (big) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium)
+        Text(price, fontWeight = FontWeight.SemiBold, style = if (big) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
+        // Always reserve the stock line so every tile lays out identically.
+        Text(if (out) "Out of stock" else " ", color = Anylo.colors.warning, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+    }
+}
+
+@Composable
+private fun Initial(name: String, size: Int) {
+    Box(Modifier.size(size.dp).clip(RoundedCornerShape((size * 0.3).dp)).background(Anylo.colors.primarySoft), contentAlignment = Alignment.Center) {
+        Text(name.trim().take(1).uppercase(), color = Anylo.colors.onPrimarySoft, fontWeight = FontWeight.Bold,
+            style = if (size >= 40) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
     }
 }
