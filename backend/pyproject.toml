@@ -20,7 +20,9 @@ known-third-party = ["alembic"]
 "tests/*" = ["E501", "S608", "E731"]
 "app/services/*.py" = ["E501"]  # long SQL strings read better unwrapped
 "app/services/shop.py" = ["E501", "S608"]  # column list constant interpolated into SQL
-"app/services/catalogue*.py" = ["E501", "S608"]  # column lists / fixed WHERE fragments; values always bound
+"app/services/catalogue*.py" = ["E501", "S608"]
+"app/services/sales.py" = ["E501", "S608"]  # fixed WHERE fragments; values always bound
+"app/services/snap.py" = ["E501", "S608"]  # placeholder names generated, values bound  # column lists / fixed WHERE fragments; values always bound
 "app/data/*" = ["E501"]  # data tables
 "app/permissions.py" = ["E741"]  # O/M/S role shorthands mirror the docs matrix
 
@@ -33,6 +35,10 @@ files = ["app"]
 [[tool.mypy.overrides]]
 module = ["reportlab.*", "openpyxl.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["app.services.invoice_pdf"]
+disallow_untyped_calls = false  # reportlab ships no type hints
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

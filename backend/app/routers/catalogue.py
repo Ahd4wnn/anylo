@@ -25,6 +25,7 @@ from app.schemas.catalogue import (
 )
 from app.services import catalogue as svc
 from app.services import catalogue_io as io_svc
+from app.services import snap as snap_svc
 from app.services.shop import shop_id_of
 
 router = APIRouter(prefix="/v1", tags=["catalogue"])
@@ -150,6 +151,11 @@ def labels(data: LabelsIn, actor: CurrentActor, db: DB) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="anylo-labels.pdf"'},
     )
+
+
+@router.post("/products/snap", dependencies=[Depends(require("product.snap"))])
+async def snap(file: UploadFile, actor: CurrentActor, db: DB) -> dict[str, Any]:
+    return snap_svc.snap(db, actor, await file.read(5 * 1024 * 1024 + 1), file.content_type or "")
 
 
 @router.post("/products", response_model=ProductOut, status_code=201, dependencies=MANAGE)
