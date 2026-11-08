@@ -26,10 +26,11 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" />
-      <nav className="mb-6 flex gap-1 overflow-x-auto border-b border-border" aria-label="Settings sections">
+      {/* Baseline drawn inside the bar (inset shadow) so the active underline never overflows and adds a scrollbar. */}
+      <nav className="mb-6 flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_rgb(var(--border))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Settings sections">
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to}
-            className={({ isActive }) => `-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 font-medium ${isActive ? "border-primary text-primary" : "border-transparent text-text-2 hover:text-text"}`}>
+            className={({ isActive }) => `whitespace-nowrap border-b-2 px-4 py-2.5 font-medium ${isActive ? "border-primary text-primary" : "border-transparent text-text-2 hover:text-text"}`}>
             {t.label}
           </NavLink>
         ))}

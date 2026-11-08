@@ -39,7 +39,7 @@ export function PrinterPanel() {
               <p className="font-semibold text-text">{p.deviceName}</p>
               <p className="text-sm text-text-2">Connected. Bills will print here.</p>
             </div>
-            <Button variant="secondary" size="md" onClick={test}><Printer className="h-4 w-4" aria-hidden />Test print</Button>
+            <Button variant="secondary" size="md" onClick={test} loading={p.printing}><Printer className="h-4 w-4" aria-hidden />{p.printing ? "Printing…" : "Test print"}</Button>
             <Button variant="ghost" size="md" onClick={p.disconnect}>Disconnect</Button>
           </div>
         ) : (

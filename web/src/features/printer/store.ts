@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { CUT, DOTS_58MM, DOTS_80MM, FEED, INIT, concat, testPage } from "./escpos";
 
 /* Web Bluetooth / Serial / USB have no bundled TS types; these minimal shapes cover what we call. */
-type Char = { properties: { write: boolean; writeWithoutResponse: boolean }; writeValue(d: Uint8Array): Promise<void>; writeValueWithoutResponse?(d: Uint8Array): Promise<void> };
+export type Char = { properties: { write: boolean; writeWithoutResponse: boolean }; writeValue(d: Uint8Array): Promise<void>; writeValueWithResponse?(d: Uint8Array): Promise<void>; writeValueWithoutResponse?(d: Uint8Array): Promise<void> };
 type Gatt = { connected: boolean; connect(): Promise<Gatt>; disconnect(): void; getPrimaryService(u: string): Promise<{ getCharacteristics(): Promise<Char[]> }>; getPrimaryServices(): Promise<{ getCharacteristics(): Promise<Char[]> }[]> };
 type BtDevice = { name?: string; gatt?: Gatt; addEventListener(t: string, f: () => void): void };
 type SerialPort = { open(o: { baudRate: number }): Promise<void>; close(): Promise<void>; writable: { getWriter(): { write(d: Uint8Array): Promise<void>; releaseLock(): void } } };
@@ -43,8 +43,38 @@ async function writeChunks(data: Uint8Array, size: number, delay: number, write:
   }
 }
 
+/**
+ * Images are unforgiving: one lost byte shifts every following row (PlantBill printed text, where a lost
+ * byte is one missing letter). So prefer acknowledged writes in large chunks: no loss, and ~9x faster
+ * than PlantBill's 20-byte fire-and-forget packets. Falls back for printers that only accept
+ * write-without-response or small packets. "Busy" errors are retried instead of dropping the chunk.
+ */
+export async function bleWrite(c: Char, data: Uint8Array) {
+  const acked = c.properties.write && (c.writeValueWithResponse || c.writeValue);
+  let size = acked ? 180 : 20;
+  for (let i = 0; i < data.length; ) {
+    const chunk = data.slice(i, i + size);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        if (acked) await (c.writeValueWithResponse ?? c.writeValue).call(c, chunk);
+        else await c.writeValueWithoutResponse!.call(c, chunk);
+        break;
+      } catch (e) {
+        const msg = String(e);
+        if (/in progress|busy/i.test(msg) && attempt < 20) { await sleep(30); continue; }
+        if (size > 20 && /length|too long|NotSupported|invalid/i.test(msg)) { size = 20; break; } // retry this chunk smaller
+        throw e;
+      }
+    }
+    if (chunk.length > size) continue; // chunk shrank: resend from the same offset
+    i += chunk.length;
+    if (!acked) await sleep(12); // no acknowledgements: pace so the printer's radio buffer keeps up
+  }
+}
+
 async function findWritable(server: Gatt): Promise<Char> {
-  const pick = (cs: Char[]) => cs.find((c) => c.properties.write || c.properties.writeWithoutResponse);
+  // Prefer a characteristic that acknowledges writes (reliable for images); else any writable one.
+  const pick = (cs: Char[]) => cs.find((c) => c.properties.write) ?? cs.find((c) => c.properties.writeWithoutResponse);
   for (const uuid of SERVICES) {
     try { const c = pick(await (await server.getPrimaryService(uuid)).getCharacteristics()); if (c) return c; } catch { /* try next */ }
   }
@@ -62,6 +92,7 @@ const cancelled = (e: unknown) => /cancel|No device selected/i.test(String(e));
 
 interface PrinterState {
   status: "disconnected" | "connecting" | "connected";
+  printing: boolean;
   connection: Connection | null;
   deviceName: string | null;
   error: string | null;
@@ -83,6 +114,7 @@ interface PrinterState {
 
 export const usePrinter = create<PrinterState>((set, get) => ({
   status: "disconnected",
+  printing: false,
   connection: null,
   deviceName: null,
   error: null,
@@ -150,13 +182,14 @@ export const usePrinter = create<PrinterState>((set, get) => ({
   },
 
   async print(raster) {
+    // One job at a time: two jobs interleaving on the wire is what garbled the first test print.
+    if (get().printing) throw new Error("Still printing the previous job.");
     const { connection, autoCut } = get();
     const data = concat([INIT, raster, FEED, autoCut ? CUT : FEED]);
+    set({ printing: true, error: null });
     try {
-      set({ error: null });
       if (connection === "bluetooth" && bt) {
-        const c = bt.char;
-        await writeChunks(data, 20, 15, (d) => (c.writeValueWithoutResponse ? c.writeValueWithoutResponse(d) : c.writeValue(d)));
+        await bleWrite(bt.char, data);
       } else if (connection === "serial" && serial) {
         const w = serial.writable.getWriter();
         try { await writeChunks(data, 64, 5, (d) => w.write(d)); } finally { w.releaseLock(); }
@@ -169,6 +202,8 @@ export const usePrinter = create<PrinterState>((set, get) => ({
     } catch (e) {
       set({ error: `Printing failed: ${e instanceof Error ? e.message : String(e)}` });
       throw e;
+    } finally {
+      set({ printing: false });
     }
   },
 
