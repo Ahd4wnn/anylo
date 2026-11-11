@@ -326,3 +326,30 @@ interface PurchasingApi {
     @POST("stock-counts/{id}/lines") suspend fun countLine(@Path("id") id: String, @Body b: CountLineReq): JsonElement
     @POST("stock-counts/{id}/post") suspend fun postCount(@Path("id") id: String): CountDto
 }
+
+// --- M6: reports and goals (backend/app/services/finance) ---
+
+@Serializable data class MetricsDto(
+    @SerialName("net_sales") val netSales: String, @SerialName("net_revenue") val netRevenue: String, val cogs: String,
+    @SerialName("gross_profit") val grossProfit: String, @SerialName("gross_margin_pct") val grossMarginPct: String,
+    val expenses: String, val labour: String, @SerialName("net_profit") val netProfit: String,
+    @SerialName("invoices_count") val invoicesCount: Int, @SerialName("avg_bill_value") val avgBillValue: String,
+)
+@Serializable data class PnlDto(val total: MetricsDto)
+@Serializable data class AgeingDto(val totals: Map<String, String>)
+@Serializable data class TaxHeads(val taxable: String = "0", val igst: String, val cgst: String, val sgst: String)
+@Serializable data class Gstr3bDto(@SerialName("outward_taxable") val outward: TaxHeads, val payable: TaxHeads)
+@Serializable data class GoalDto(
+    val id: String, val metric: String, val title: String, val target: String, val actual: String, val percent: String,
+    @SerialName("elapsed_percent") val elapsedPercent: String, @SerialName("run_rate_needed") val runRateNeeded: String? = null,
+    @SerialName("days_left") val daysLeft: Int, val status: String, @SerialName("user_name") val userName: String? = null,
+)
+@Serializable data class DashboardDto(val current: MetricsDto, val previous: MetricsDto, val goals: List<GoalDto> = emptyList())
+
+interface ReportsApi {
+    @GET("dashboard") suspend fun dashboard(@Query("from") from: String, @Query("to") to: String): DashboardDto
+    @GET("reports/pnl") suspend fun pnl(@Query("from") from: String, @Query("to") to: String): PnlDto
+    @GET("reports/receivables") suspend fun receivables(): AgeingDto
+    @GET("reports/gst/gstr3b") suspend fun gstr3b(@Query("period") period: String): Gstr3bDto
+    @GET("goals") suspend fun goals(): List<GoalDto>
+}

@@ -78,7 +78,7 @@ private fun rs(v: String) = "₹" + money(v)
 private fun num(v: String) = v.toBigDecimalOrNull() ?: BigDecimal.ZERO
 
 private enum class Hub(val label: String, val permission: String) {
-    Customers("Customers", "customer.view"), Cash("Cash & close day", "cash.view_today"), Expenses("Expenses", "expense.create"),
+    Reports("Reports", "report.view"), Customers("Customers", "customer.view"), Cash("Cash & close day", "cash.view_today"), Expenses("Expenses", "expense.create"),
     Labour("Labour", "labour.attendance"), Loans("Loans", "borrowing.manage"), Purchases("Purchases", "purchase.manage"),
     StockCount("Stock count", "stock.manage"), Approvals("Approvals", "approval.decide"),
 }
@@ -91,14 +91,19 @@ fun HomeHub(app: AppState, me: Me) {
     var cash by remember { mutableStateOf<CashDayDto?>(null) }
     var sales by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var pending by remember { mutableIntStateOf(0) }
+    var dash by remember { mutableStateOf<`in`.anylo.app.core.DashboardDto?>(null) }
+    var goals by remember { mutableStateOf(emptyList<`in`.anylo.app.core.GoalDto>()) }
     LaunchedEffect(open, me.activeShopId) {
         if (open != null || me.activeShopId == null) return@LaunchedEffect
         val today = LocalDate.now().toString()
         runCatching { app.session.sales.list(null, today, today) }.onSuccess { sales = it.salesTotal to it.total }
         if (app.can("cash.view_today")) runCatching { cash = app.session.money.cashToday() }
         if (app.can("approval.decide")) runCatching { pending = app.session.money.approvals().size }
+        if (app.can("report.view")) runCatching { dash = app.session.reports.dashboard(today, today) }
+        runCatching { goals = app.session.reports.goals().filter { it.daysLeft > 0 || it.status == "achieved" }.take(3) }
     }
     when (open) {
+        Hub.Reports -> { ReportsScreen(app) { open = null }; return }
         Hub.Customers -> { CustomersScreen(app) { open = null }; return }
         Hub.Cash -> { CashScreen(app) { open = null }; return }
         Hub.Expenses -> { ExpensesScreen(app) { open = null }; return }
@@ -123,7 +128,14 @@ fun HomeHub(app: AppState, me: Me) {
             Stat("Today's sales", sales?.first?.let(::rs) ?: "…", Modifier.weight(1f))
             Stat("Bills today", sales?.second?.toString() ?: "…", Modifier.weight(1f))
         }
+        dash?.current?.let { m ->
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Stat("Gross profit today", rs(m.grossProfit), Modifier.weight(1f))
+                Stat("Average bill", rs(m.avgBillValue), Modifier.weight(1f))
+            }
+        }
         cash?.let { Stat("Cash in drawer", rs(it.expected), Modifier.fillMaxWidth()) }
+        goals.forEach { GoalRow(it) }
         Hub.entries.filter { app.can(it.permission) }.forEach { h ->
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface).clickable { open = h }.padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically) {
