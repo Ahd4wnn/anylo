@@ -35,9 +35,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "cash.view_today": SHOP_STAFF,
     "cash.close": SHOP_STAFF,  # salesperson → manager confirms
     "cash.book": SHOP_ADMINS | {AC},
-    "books.view": SHOP_ADMINS | {AC},  # read-only books: purchases, wages, loans, bank, filings
-    "books.manage": SHOP_ADMINS,
-    "books.lock": frozenset({O}),
+    "books.view": SHOP_ADMINS | {AC},  # read-only: purchases, wages, loans
     # insight
     "report.view": SHOP_ADMINS | {AC},
     "report.gst": SHOP_ADMINS | {AC},

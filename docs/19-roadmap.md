@@ -226,15 +226,15 @@ Notes (M6 as built):
 
 **Books & compliance: replace the day-to-day accountant** (from the accountant-tasks research, Nov 2026; confirm rules marked uncertain with a CA)
 - [x] `fix(api)`: CMP-08 on taxable turnover only (store each line's GST rate kind even for composition shops so exempt sales drop out)
-- [x] `feat(api)`: compliance calendar + filing tracker (GSTR-1/IFF, 3B, CMP-08, GSTR-4/9, advance tax, ITR, licence renewals; filed on + ARN; reminders)
+- [ ] `feat(api)`: compliance calendar + filing tracker (GSTR-1/IFF, 3B, CMP-08, GSTR-4/9, advance tax, ITR, licence renewals; filed on + ARN; reminders)
 - [ ] `feat(api)`: opening balances at a cut-over date (cash, banks, customers, suppliers, stock, loans, capital)
-- [x] `feat(api)`: bank accounts + statement import (CSV/XLS) + auto-match + reconciled flag
-- [x] `feat(api)`: owner capital and drawings (drawings are never an expense)
+- [ ] `feat(api)`: bank accounts + statement import (CSV/XLS) + auto-match + reconciled flag
+- [ ] `feat(api)`: owner capital and drawings (drawings are never an expense)
 - [x] `feat(api)`: expense GST fields (supplier GSTIN, bill no., ITC eligible) + reverse charge self-invoice + 3B table 3.1(d)
 - [ ] `feat(api)`: GSTR-2B import + ITC matching + IMS to-do list (accept / reject / pending)
 - [ ] `feat(api)`: generated double-entry ledger (fixed chart of accounts, journals built from existing events) + trial balance
-- [x] `feat(api)`: balance sheet + capital account
-- [x] `feat(api)`: fixed assets + income-tax WDV depreciation (half rate under 180 days)
+- [ ] `feat(api)`: balance sheet + capital account
+- [ ] `feat(api)`: fixed assets + income-tax WDV depreciation (half rate under 180 days)
 - [x] `feat(api)`: loan interest / EMI split (interest to P&L)
 - [ ] `feat(api)`: income-tax helper (presumptive s.58 of the Income-tax Act 2025 vs regular profit, cash-receipt % meter for audit limits, advance-tax estimate, ITR-4/ITR-3 figures sheet)
 - [ ] `feat(api)`: year-end close + period lock (FY and filed GST months; edits after lock need owner approval and are audited)
@@ -245,11 +245,9 @@ Notes (M6 as built):
 - [ ] `docs`: switch tax references to the Income-tax Act 2025 numbering (44AD → s.58, 44AA → s.62, 44AB → s.63 / Form 26, 194Q → s.393) and re-check GST rate seeds against the Sept 2025 slabs (5% / 18% / 40%)
 - [ ] `feat(web)`, `feat(android)`: screens for the above (bank, capital, assets, filings calendar, CA invite)
 
-Notes (books, first pass):
-- Opening balances: books start date + opening cash and bank balances only; customers/suppliers/loans/stock already carry their own opening figures. The rest shows as "opening capital (balancing figure)" on the balance sheet.
-- Balance sheet and trial balance come from the same numbers (assets, liabilities, P&L since books start, capital, drawings). Receivables, payables and stock are today's figures, so past dates are approximate. A real double-entry ledger is still open.
-- Year lock blocks back-dated expenses, wages, purchases, assets and owner money. Locking filed GST months is still open.
-- CA role is read-only and invited by the owner; per-view audit and multi-shop access are still open.
+Notes (first pass):
+- Books, bank reconciliation, filings calendar, fixed assets and year close were built, then taken out of the app on purpose (Nov 2026): too much for a shop owner. The tables from migration 0010 stay, unused. The Excel workbook remains the CA's view.
+- Kept: CMP-08 on taxable turnover, expense GST / reverse charge in 3B, loan interest split, read-only accountant login.
 - AI manager and WhatsApp show as "Coming soon" (web settings + sidebar, Android home) until the keys are in.
 
 Left to a CA or a licensed GSP on purpose: tax audit (Form 26), certificates (CMA, net worth), filing by API / e-invoice IRN / e-way bills, TDS and PF/ESI returns, notices and appeals, company/LLP books. Anylo prepares and exports; the CA signs.

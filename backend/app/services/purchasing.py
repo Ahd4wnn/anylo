@@ -1,6 +1,5 @@
 """Suppliers, purchases (weighted-average cost), supplier payments and stock counts (docs/08-inventory.md §3, §4, §6)."""
 
-from datetime import date
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -12,7 +11,6 @@ from app.database import Actor
 from app.errors import AppError
 from app.schemas.purchasing import CountIn, CountLineIn, PurchaseIn, SupplierIn, SupplierPayIn
 from app.services import audit
-from app.services.books import ensure_open
 from app.services.catalogue import _move
 from app.services.gst import engine
 from app.services.sales import _q, shop_ctx
@@ -384,7 +382,6 @@ def _purchase(db: Session, actor: Actor, pid: UUID) -> Any:
 def post(db: Session, actor: Actor, pid: UUID, paid: list[Any] | None = None) -> dict[str, Any]:
     """Stock in, weighted-average cost updated, payable created (docs/08-inventory.md §3)."""
     p = _purchase(db, actor, pid)
-    ensure_open(db, p.shop_id, p.supplier_invoice_date or date.today())
     if p.status != "draft":
         raise AppError("purchase.not_draft", "This purchase is already posted or cancelled.", 409)
     if sum((x.amount for x in paid or []), ZERO) > p.grand_total:
@@ -437,7 +434,6 @@ def post(db: Session, actor: Actor, pid: UUID, paid: list[Any] | None = None) ->
 
 def cancel(db: Session, actor: Actor, pid: UUID) -> dict[str, Any]:
     p = _purchase(db, actor, pid)
-    ensure_open(db, p.shop_id, p.supplier_invoice_date or date.today())
     if p.status == "cancelled":
         raise AppError("purchase.cancelled", "This purchase is already cancelled.", 409)
     if p.status == "posted":

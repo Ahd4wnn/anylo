@@ -14,7 +14,6 @@ from app.database import Actor
 from app.errors import AppError
 from app.schemas.backoffice import BorrowingIn, CloseIn, ExpenseIn, RepayIn
 from app.services import audit
-from app.services.books import ensure_open
 from app.services.sales import ShopCtx, _q, _today, shop_ctx
 from app.services.shop import shop_id_of
 
@@ -221,7 +220,6 @@ def create_expense(db: Session, actor: Actor, data: ExpenseIn) -> dict[str, Any]
     day = data.occurred_on or _today(ctx)
     if day > _today(ctx):
         raise AppError("expense.future", "An expense can't be dated in the future.", 422)
-    ensure_open(db, ctx.id, day)
     cat_id, cat_name = _category(db, actor, data)
     eid: UUID = _q(
         db,
@@ -278,7 +276,6 @@ def update_expense(db: Session, actor: Actor, eid: UUID, data: ExpenseIn) -> dic
     if not before:
         raise AppError("expense.not_found", "This expense was not found.", 404)
     day = data.occurred_on or before.occurred_on
-    ensure_open(db, ctx.id, min(day, before.occurred_on))
     cat_id, cat_name = _category(db, actor, data)
     _q(
         db,
@@ -328,7 +325,6 @@ def delete_expense(db: Session, actor: Actor, eid: UUID) -> None:
     ).first()
     if not r:
         raise AppError("expense.not_found", "This expense was not found.", 404)
-    ensure_open(db, shop_id_of(actor), r.occurred_on)
     _reverse(db, "expense", eid)
     audit.record(
         db,

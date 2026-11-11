@@ -10,7 +10,6 @@ from app.config import get_settings
 from app.errors import install_error_handlers
 from app.routers import (
     auth,
-    books,
     catalogue,
     finance,
     meta,
@@ -55,7 +54,6 @@ def create_app() -> FastAPI:
     app.include_router(money.router)
     app.include_router(purchasing.router)
     app.include_router(finance.router)
-    app.include_router(books.router)
     if settings.env == "dev":  # production: nginx serves /media
         Path(settings.media_root).mkdir(parents=True, exist_ok=True)
         app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
