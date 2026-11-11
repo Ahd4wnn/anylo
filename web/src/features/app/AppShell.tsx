@@ -55,7 +55,7 @@ function NavItem({ to, label, icon: Icon, end, compact }: (typeof NAV)[number] &
     <NavLink to={to} end={end}
       className={({ isActive }) => compact
         ? `flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium ${isActive ? "text-primary" : "text-text-2"}`
-        : `flex h-11 items-center gap-3 rounded-lg px-3 font-medium transition-colors ${isActive ? "bg-primary-soft text-on-primary-soft" : "text-text-2 hover:bg-surface-2 hover:text-text"}`}>
+        : `flex h-10 items-center gap-3 rounded-lg px-3 font-medium transition-colors ${isActive ? "bg-primary-soft text-on-primary-soft" : "text-text-2 hover:bg-surface-2 hover:text-text"}`}>
       <Icon className="h-5 w-5" aria-hidden />{label}
     </NavLink>
   );
@@ -67,21 +67,30 @@ export function AppShell({ children }: { children?: ReactNode }) {
   return (
     <div className="min-h-dvh bg-bg lg:grid lg:grid-cols-[256px_1fr]">
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-surface p-4 lg:flex">
-        <div className="px-2 pb-6 pt-2"><Logo size={32} /></div>
-        <nav className="space-y-1" aria-label="Main">{NAV.filter((n) => !("perm" in n) || can(n.perm ?? "")).map((n) => <NavItem key={n.to} {...n} />)}</nav>
-        <div className="mt-4 space-y-1 border-t border-border pt-4">
-          {SOON.filter((n) => can(n.perm)).map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className="flex h-11 items-center gap-3 rounded-lg px-3 font-medium text-text-3 hover:bg-surface-2">
-              <Icon className="h-5 w-5" aria-hidden />{label}
-              <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-text-2">Soon</span>
-            </NavLink>
-          ))}
+        <div className="px-2 pb-4 pt-1"><Logo size={32} /></div>
+        {/* Menu scrolls on its own so the account row always stays on screen, even on short laptop screens. */}
+        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+          <nav className="space-y-0.5" aria-label="Main">{NAV.filter((n) => !("perm" in n) || can(n.perm ?? "")).map((n) => <NavItem key={n.to} {...n} />)}</nav>
+          <div className="mt-2 space-y-0.5 border-t border-border pt-2">
+            {SOON.filter((n) => can(n.perm)).map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} className="flex h-9 items-center gap-3 rounded-lg px-3 text-sm font-medium text-text-3 hover:bg-surface-2">
+                <Icon className="h-4 w-4" aria-hidden />{label}
+                <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-text-2">Soon</span>
+              </NavLink>
+            ))}
+          </div>
         </div>
-        <div className="mt-auto rounded-lg border border-border p-3">
-          <p className="truncate text-sm font-semibold">{me?.user.full_name}</p>
-          <p className="truncate text-xs capitalize text-text-2">{me?.user.role}</p>
-          <button onClick={logout} className="mt-3 flex items-center gap-2 text-sm font-medium text-text-2 hover:text-danger">
-            <LogOut className="h-4 w-4" aria-hidden />Log out
+        <div className="mt-3 flex items-center gap-3 border-t border-border px-1 pt-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary-soft text-sm font-bold text-on-primary-soft" aria-hidden>
+            {me?.user.full_name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold leading-tight">{me?.user.full_name}</p>
+            <p className="truncate text-xs capitalize text-text-2">{me?.user.role}</p>
+          </div>
+          <button onClick={logout} title="Log out" aria-label="Log out"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-text-2 hover:bg-surface-2 hover:text-danger">
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </aside>
