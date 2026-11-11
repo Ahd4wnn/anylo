@@ -92,6 +92,8 @@ def test_dashboard_metrics(c: TestClient, shop: dict) -> None:
     }
     assert d["top_by_revenue"][0]["name"] == "Shirt" and d["staff"][0]["bills"] == 2
     assert sum(float(t["sales"]) for t in d["trend"]) == 472.0
+    month = c.get("/v1/dashboard", headers=shop["h"], params={"from": str(date.today().replace(day=1)), "to": str(date.today())}).json()
+    assert len(month["trend"]) == date.today().day  # one bar per day, empty days included
     assert c.get("/v1/dashboard", headers=staff(c, shop["h"])).status_code == 403
 
 

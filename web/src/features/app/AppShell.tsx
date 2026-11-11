@@ -3,7 +3,7 @@ import { useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/features/auth/store";
 import { Logo } from "@/ui/Logo";
-import { Badge, Toaster } from "@/ui/primitives";
+import { Toaster } from "@/ui/primitives";
 
 const NAV = [
   { to: "/app", label: "Home", icon: Home, end: true },
@@ -13,7 +13,7 @@ const NAV = [
   { to: "/app/purchases", label: "Purchases", icon: Truck, perm: "purchase.manage" },
   { to: "/app/customers", label: "Customers", icon: Users },
   { to: "/app/money", label: "Money", icon: Wallet },
-  { to: "/app/reports", label: "Reports", icon: BarChart3, soon: true },
+  { to: "/app/reports", label: "Reports", icon: BarChart3 },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
 
@@ -45,18 +45,11 @@ function ShopSwitcher() {
   );
 }
 
-function NavItem({ to, label, icon: Icon, end, soon, compact }: (typeof NAV)[number] & { compact?: boolean }) {
-  if (soon && !compact) {
-    return (
-      <span className="flex h-11 items-center gap-3 rounded-lg px-3 text-text-3" aria-disabled>
-        <Icon className="h-5 w-5" aria-hidden />{label}<span className="ml-auto"><Badge>Soon</Badge></span>
-      </span>
-    );
-  }
+function NavItem({ to, label, icon: Icon, end, compact }: (typeof NAV)[number] & { compact?: boolean }) {
   return (
-    <NavLink to={soon ? "#" : to} end={end} onClick={(e) => soon && e.preventDefault()}
+    <NavLink to={to} end={end}
       className={({ isActive }) => compact
-        ? `flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium ${isActive && !soon ? "text-primary" : soon ? "text-text-3" : "text-text-2"}`
+        ? `flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium ${isActive ? "text-primary" : "text-text-2"}`
         : `flex h-11 items-center gap-3 rounded-lg px-3 font-medium transition-colors ${isActive ? "bg-primary-soft text-on-primary-soft" : "text-text-2 hover:bg-surface-2 hover:text-text"}`}>
       <Icon className="h-5 w-5" aria-hidden />{label}
     </NavLink>
@@ -83,7 +76,10 @@ export function AppShell({ children }: { children?: ReactNode }) {
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur sm:px-6">
           <span className="lg:hidden"><Logo size={28} /></span>
           <ShopSwitcher />
-          <NavLink to="/app/settings" className="ml-auto grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Settings">
+          <NavLink to="/app/reports" className="ml-auto grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Reports">
+            <BarChart3 className="h-5 w-5" />
+          </NavLink>
+          <NavLink to="/app/settings" className="grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Settings">
             <Settings className="h-5 w-5" />
           </NavLink>
           <button onClick={logout} className="grid h-10 w-10 place-items-center rounded-lg text-text-2 hover:bg-surface-2 lg:hidden" aria-label="Log out">

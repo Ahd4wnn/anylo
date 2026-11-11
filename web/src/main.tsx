@@ -20,6 +20,8 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
 import "@/styles/index.css";
 import { CustomerDetail, CustomersPage } from "@/features/money/CustomersPages";
 import { MoneyPage } from "@/features/money/MoneyPages";
+import { DashboardPage } from "@/features/finance/DashboardPage";
+import { ReportsPage } from "@/features/finance/ReportsPage";
 import { PurchaseEditor } from "@/features/purchasing/PurchaseEditor";
 import { PurchaseDetail, PurchasingPage } from "@/features/purchasing/PurchasingPages";
 
@@ -41,6 +43,12 @@ function Gate({ need, children }: { need: "anonymous" | "ready"; children: React
   return <>{children}</>;
 }
 
+/** Owners and managers land on the dashboard; staff (and the shop picker) keep the simple home. */
+function Home() {
+  const { me, can } = useAuth();
+  return me?.active_shop_id && can("report.view") ? <DashboardPage /> : <HomePage />;
+}
+
 const router = createBrowserRouter([
   { path: "/login", element: <Gate need="anonymous"><LoginPage /></Gate> },
   { path: "/signup", element: <Gate need="anonymous"><SignupPage /></Gate> },
@@ -54,7 +62,8 @@ const router = createBrowserRouter([
     path: "/app",
     element: <Gate need="ready"><AppShell /></Gate>,
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, element: <Home /> },
+      { path: "reports/*", element: <ReportsPage /> },
       { path: "items", element: <ItemsPage /> },
       { path: "items/new", element: <ProductEditor /> },
       { path: "items/import", element: <ImportPage /> },

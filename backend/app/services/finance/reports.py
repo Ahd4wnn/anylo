@@ -76,7 +76,7 @@ def dashboard(db: Session, actor: Actor, start: date, end: date) -> dict[str, An
             "sales": sales.get(d, ZERO) - ret.get(d, ZERO),
             "profit": rev.get(d, ZERO) - ret_rev.get(d, ZERO) - cogs.get(d, ZERO),
         }
-        for d in sorted(set(sales) | set(ret))
+        for d in _buckets(start, end, grain)
     ]
     mix = [
         dict(r)
@@ -120,6 +120,17 @@ def dashboard(db: Session, actor: Actor, start: date, end: date) -> dict[str, An
         "alerts": alerts(db, ctx),
         "goals": list_goals(db, actor, active_only=True),
     }
+
+
+def _buckets(start: date, end: date, grain: str) -> list[date]:
+    """Every day (or Monday-started week) in the range, so empty days show as gaps instead of disappearing."""
+    step = 7 if grain == "week" else 1
+    cur = start - timedelta(days=start.weekday()) if grain == "week" else start
+    out = []
+    while cur <= end:
+        out.append(cur)
+        cur += timedelta(days=step)
+    return out
 
 
 def alerts(db: Session, ctx: ShopCtx) -> list[dict[str, Any]]:
