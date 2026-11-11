@@ -189,33 +189,63 @@ Notes (M5 as built):
 ## M6 · Finance, reports, goals, GST returns, dashboard
 
 **API**
-- [ ] `feat(api)`: `services/finance/metrics.py` (one commit per metric family) + golden-month tests
-- [ ] `feat(db)`: daily_snapshots + `finance.daily_close` job + verifier
-- [ ] `feat(api)`: dashboard endpoint
-- [ ] `feat(api)`: P&L, cash flow, receivables/payables ageing, staff, product, expense reports
-- [ ] `feat(api)`: XLSX builder base (branding, Indian formats, formulas)
-- [ ] `feat(api)`: business workbook sheets (one commit per 2–3 sheets)
-- [ ] `feat(api)`: async export job + signed downloads
-- [ ] `feat(api)`: goals CRUD, progress, notifications, goal-tracker workbook with charts
-- [ ] `feat(api)`: GSTR-1 sections (b2b, b2cl, b2cs, cdnr/cdnur, hsn, docs, nil): one commit each
-- [ ] `feat(api)`: GSTR-1 xlsx + json export
-- [ ] `feat(api)`: GSTR-3B summary
-- [ ] `feat(api)`: CMP-08 helper
-- [ ] `feat(api)`: sales/purchase registers
+- [x] `feat(api)`: `services/finance/metrics.py` (one commit per metric family) + golden-month tests
+- [x] `feat(db)`: daily_snapshots + `finance.daily_close` job + verifier
+- [x] `feat(api)`: dashboard endpoint
+- [x] `feat(api)`: P&L, cash flow, receivables/payables ageing, staff, product, expense reports
+- [x] `feat(api)`: XLSX builder base (branding, Indian formats, formulas)
+- [x] `feat(api)`: business workbook sheets (one commit per 2–3 sheets)
+- [x] `feat(api)`: async export job + signed downloads
+- [x] `feat(api)`: goals CRUD, progress, notifications, goal-tracker workbook with charts
+- [x] `feat(api)`: GSTR-1 sections (b2b, b2cl, b2cs, cdnr/cdnur, hsn, docs, nil): one commit each
+- [x] `feat(api)`: GSTR-1 xlsx + json export
+- [x] `feat(api)`: GSTR-3B summary
+- [x] `feat(api)`: CMP-08 helper
+- [x] `feat(api)`: sales/purchase registers
 
 **Clients**
-- [ ] `feat(web)`: dashboard (tiles, charts, goals, alerts)
-- [ ] `feat(web)`: reports hub
-- [ ] `feat(web)`: each report page
-- [ ] `feat(web)`: GST page
-- [ ] `feat(web)`: goals
-- [ ] `feat(web)`: owner overview
-- [ ] `feat(android)`: dashboard
-- [ ] `feat(android)`: reports
-- [ ] `feat(android)`: goals
-- [ ] `feat(android)`: owner overview
+- [x] `feat(web)`: dashboard (tiles, charts, goals, alerts)
+- [x] `feat(web)`: reports hub
+- [x] `feat(web)`: each report page
+- [x] `feat(web)`: GST page
+- [x] `feat(web)`: goals
+- [x] `feat(web)`: owner overview
+- [x] `feat(android)`: dashboard
+- [x] `feat(android)`: reports
+- [x] `feat(android)`: goals
+- [x] `feat(android)`: owner overview
+
+Notes (M6 as built):
+- One metrics module (`services/finance/metrics.py`) feeds the dashboard, P&L, goals and Excel. Everything is computed live; `daily_snapshots` waits until a shop's data makes that slow.
+- Dashboard: tiles vs the previous equal period, sales trend (every day shown, weekly over 62 days), payment mix, top items by sales and profit, staff, alerts, goals. Not yet: sales-by-hour strip, category share, owner multi-shop view.
+- GST: GSTR-1 (B2B, B2CL, B2CS with returns netted, CDNR, CDNUR, HSN B2B/B2C, docs, nil), GSTR-3B from the same data, CMP-08. Excel in the offline-tool layout; portal JSON not yet.
+- Business workbook (21 sheets, Anylo colours, banded rows, formula totals, charts, attendance register in green/amber/red). Goal-tracker workbook and large-export jobs not yet.
 
 ## M7 · Subscription, AI manager, WhatsApp, admin, launch hardening
+
+
+**Books & compliance: replace the day-to-day accountant** (from the accountant-tasks research, Nov 2026; confirm rules marked uncertain with a CA)
+- [ ] `fix(api)`: CMP-08 on taxable turnover only (store each line's GST rate kind even for composition shops so exempt sales drop out)
+- [ ] `feat(api)`: compliance calendar + filing tracker (GSTR-1/IFF, 3B, CMP-08, GSTR-4/9, advance tax, ITR, licence renewals; filed on + ARN; reminders)
+- [ ] `feat(api)`: opening balances at a cut-over date (cash, banks, customers, suppliers, stock, loans, capital)
+- [ ] `feat(api)`: bank accounts + statement import (CSV/XLS) + auto-match + reconciled flag
+- [ ] `feat(api)`: owner capital and drawings (drawings are never an expense)
+- [ ] `feat(api)`: expense GST fields (supplier GSTIN, bill no., ITC eligible) + reverse charge self-invoice + 3B table 3.1(d)
+- [ ] `feat(api)`: GSTR-2B import + ITC matching + IMS to-do list (accept / reject / pending)
+- [ ] `feat(api)`: generated double-entry ledger (fixed chart of accounts, journals built from existing events) + trial balance
+- [ ] `feat(api)`: balance sheet + capital account
+- [ ] `feat(api)`: fixed assets + income-tax WDV depreciation (half rate under 180 days)
+- [ ] `feat(api)`: loan interest / EMI split (interest to P&L)
+- [ ] `feat(api)`: income-tax helper (presumptive s.58 of the Income-tax Act 2025 vs regular profit, cash-receipt % meter for audit limits, advance-tax estimate, ITR-4/ITR-3 figures sheet)
+- [ ] `feat(api)`: year-end close + period lock (FY and filed GST months; edits after lock need owner approval and are audited)
+- [ ] `feat(api)`: CA role (read-only, multi-shop, every view audited, invited and revoked by the owner) + "close-ready" checklist
+- [ ] `feat(api)`: statutory alerts (s.393 / old 194Q TDS applicability, MSME 45-day payments, PF/ESI headcount, composition ₹1.5 Cr and e-invoice ₹5 Cr limits)
+- [ ] `feat(api)`: workbook sheets for the CA: Trial Balance, Ledger by account and by party, Balance Sheet, Capital, Bank Reconciliation, ITC Register, GST Reconciliation (books vs 1 vs 3B vs 2B), Reverse Charge, Fixed Assets, Closing Stock, Loans, Payroll, Tax Computation, Filings
+- [ ] `feat(api)`: Tally XML voucher export
+- [ ] `docs`: switch tax references to the Income-tax Act 2025 numbering (44AD → s.58, 44AA → s.62, 44AB → s.63 / Form 26, 194Q → s.393) and re-check GST rate seeds against the Sept 2025 slabs (5% / 18% / 40%)
+- [ ] `feat(web)`, `feat(android)`: screens for the above (bank, capital, assets, filings calendar, CA invite)
+
+Left to a CA or a licensed GSP on purpose: tax audit (Form 26), certificates (CMA, net worth), filing by API / e-invoice IRN / e-way bills, TDS and PF/ESI returns, notices and appeals, company/LLP books. Anylo prepares and exports; the CA signs.
 
 **Subscription**
 - [ ] `feat(db)`: plans, subscriptions, subscription_payments, razorpay_events

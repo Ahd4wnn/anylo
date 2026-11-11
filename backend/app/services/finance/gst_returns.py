@@ -202,17 +202,18 @@ def gstr3b(db: Session, actor: Actor, period: str) -> dict[str, Any]:
             row = unreg.setdefault(r["pos"], {"taxable": ZERO, "igst": ZERO})
             row["taxable"] += sign * r["taxable"]
             row["igst"] += sign * r["igst"]
+    # ITC belongs to the month on the supplier's bill (what GSTR-2B uses), not the day it was entered here.
     start, end = month_range(period)
-    a, b = bounds(ctx, start, end)
     itc = dict(
         _q(
             db,
             "SELECT coalesce(sum(igst_total), 0) AS igst, coalesce(sum(cgst_total), 0) AS cgst, coalesce(sum(sgst_total), 0) AS sgst,"
             " coalesce(sum(cess_total), 0) AS cess FROM purchases WHERE shop_id = :s AND status = 'posted' AND itc_eligible"
-            " AND posted_at >= :a AND posted_at < :b",
+            " AND coalesce(supplier_invoice_date, (posted_at AT TIME ZONE :tz)::date) BETWEEN :d1 AND :d2",
             s=ctx.id,
-            a=a,
-            b=b,
+            d1=start,
+            d2=end,
+            tz=str(ctx.tz),
         )
         .one()
         ._mapping

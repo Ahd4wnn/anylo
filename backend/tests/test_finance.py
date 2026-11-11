@@ -92,7 +92,11 @@ def test_dashboard_metrics(c: TestClient, shop: dict) -> None:
     }
     assert d["top_by_revenue"][0]["name"] == "Shirt" and d["staff"][0]["bills"] == 2
     assert sum(float(t["sales"]) for t in d["trend"]) == 472.0
-    month = c.get("/v1/dashboard", headers=shop["h"], params={"from": str(date.today().replace(day=1)), "to": str(date.today())}).json()
+    month = c.get(
+        "/v1/dashboard",
+        headers=shop["h"],
+        params={"from": str(date.today().replace(day=1)), "to": str(date.today())},
+    ).json()
     assert len(month["trend"]) == date.today().day  # one bar per day, empty days included
     assert c.get("/v1/dashboard", headers=staff(c, shop["h"])).status_code == 403
 
@@ -181,10 +185,51 @@ def test_goals_progress_and_staff_view(c: TestClient, shop: dict) -> None:
 
 
 def test_excel_workbooks(c: TestClient, shop: dict) -> None:
-    r = c.get("/v1/reports/export", headers=shop["h"])
+    from datetime import timedelta
+
+    h = shop["h"]
+    w = c.post(
+        "/v1/labour/workers",
+        headers=h,
+        json={
+            "name": "Suresh",
+            "gender": "male",
+            "daily_wage": "500",
+            "joined_on": str(date.today() - timedelta(days=3)),
+        },
+    ).json()
+    for back, status in ((1, "present"), (2, "absent")):
+        c.post(
+            "/v1/labour/attendance",
+            headers=h,
+            json={
+                "labourer_id": w["id"],
+                "day": str(date.today() - timedelta(days=back)),
+                "status": status,
+            },
+        )
+    r = c.get(
+        "/v1/reports/export",
+        headers=shop["h"],
+        params={"from": str(date.today() - timedelta(days=5)), "to": str(date.today())},
+    )
     assert r.status_code == 200, r.text
     wb = load_workbook(io.BytesIO(r.content))
     assert {"Summary", "P&L", "Sales Register", "Receivables Ageing", "Goals"} <= set(wb.sheetnames)
+    att = wb["Attendance"]
+    row = [att.cell(6, col).value for col in range(1, 12)]
+    assert row[:5] == ["Suresh", 1, 0, 1, 1]
+    marks = {
+        att.cell(6, col).value: att.cell(6, col).fill.fgColor.rgb
+        for col in range(6, 12)
+        if att.cell(6, col).value in ("P", "A")
+    }
+    assert marks["P"].endswith("DDF1E7") and marks["A"].endswith(
+        "FBE3E3"
+    )  # green present, red absent
+    assert {"Daily Sales", "Staff", "Stock Movements", "Audit Log", "Labour Payments"} <= set(
+        wb.sheetnames
+    )
     reg = wb["Sales Register"]
     assert reg.cell(5, 1).value.startswith("INV/") and str(reg.cell(7, 12).value).startswith(
         "=SUM("
