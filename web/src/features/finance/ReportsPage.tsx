@@ -10,6 +10,7 @@ import { formatINR } from "@/lib/money";
 import { Button } from "@/ui/Button";
 import { Dialog, PageHeader, useToast } from "@/ui/primitives";
 import { download, presetRange, type Goal, type Metrics } from "./api";
+import { Books, Filings } from "./BooksPage";
 import { GoalCard, RangePicker } from "./DashboardPage";
 
 const rupees = (v: string | number | null | undefined) => (v === null || v === undefined ? "" : formatINR(String(v), { always: true }));
@@ -21,6 +22,7 @@ export function ReportsPage() {
   const tabs = [
     ...(can("report.view") ? [["pnl", "Profit & loss"], ["cash-flow", "Cash flow"], ["receivables", "Who owes you"], ["payables", "What you owe"]] : []),
     ...(can("report.gst") ? [["gst", "GST returns"]] : []),
+    ...(can("books.view") ? [["books", "Books"], ["filings", "Filings"]] : []),
     ["goals", "Goals"],
   ];
   return (
@@ -39,6 +41,8 @@ export function ReportsPage() {
         <Route path="payables" element={<Ageing kind="payables" />} />
         <Route path="gst" element={<Gst />} />
         <Route path="goals" element={<Goals />} />
+        <Route path="books" element={<Books />} />
+        <Route path="filings" element={<Filings />} />
       </Routes>
     </>
   );

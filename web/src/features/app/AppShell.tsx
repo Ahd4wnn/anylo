@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, Home, LogOut, Package, ReceiptText, Settings, ShoppingCart, Store, Truck, Users, Wallet } from "lucide-react";
+import { BarChart3, ChevronDown, Home, LogOut, MessageCircle, Package, ReceiptText, Settings, ShoppingCart, Sparkles, Store, Truck, Users, Wallet } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/features/auth/store";
@@ -15,6 +15,11 @@ const NAV = [
   { to: "/app/money", label: "Money", icon: Wallet },
   { to: "/app/reports", label: "Reports", icon: BarChart3 },
   { to: "/app/settings", label: "Settings", icon: Settings },
+];
+
+const SOON = [
+  { to: "/app/settings/ai", label: "AI manager", icon: Sparkles, perm: "ai.use" },
+  { to: "/app/settings/whatsapp", label: "WhatsApp", icon: MessageCircle, perm: "shop.settings" },
 ];
 
 function ShopSwitcher() {
@@ -64,6 +69,14 @@ export function AppShell({ children }: { children?: ReactNode }) {
       <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-surface p-4 lg:flex">
         <div className="px-2 pb-6 pt-2"><Logo size={32} /></div>
         <nav className="space-y-1" aria-label="Main">{NAV.filter((n) => !("perm" in n) || can(n.perm ?? "")).map((n) => <NavItem key={n.to} {...n} />)}</nav>
+        <div className="mt-4 space-y-1 border-t border-border pt-4">
+          {SOON.filter((n) => can(n.perm)).map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className="flex h-11 items-center gap-3 rounded-lg px-3 font-medium text-text-3 hover:bg-surface-2">
+              <Icon className="h-5 w-5" aria-hidden />{label}
+              <span className="ml-auto rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold text-text-2">Soon</span>
+            </NavLink>
+          ))}
+        </div>
         <div className="mt-auto rounded-lg border border-border p-3">
           <p className="truncate text-sm font-semibold">{me?.user.full_name}</p>
           <p className="truncate text-xs capitalize text-text-2">{me?.user.role}</p>

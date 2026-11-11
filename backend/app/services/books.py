@@ -488,7 +488,8 @@ def calendar(db: Session, actor: Actor, today: date | None = None) -> list[dict[
     often extends them, and QRMP / audit cases have other dates."""
     ctx = shop_ctx(db, actor)
     today = today or _today(ctx)
-    lo, hi = today - timedelta(days=62), today + timedelta(days=124)
+    # Nothing due before the shop started its books here; earlier returns were handled elsewhere.
+    lo, hi = max(today - timedelta(days=62), _start(db, ctx)), today + timedelta(days=124)
     due: list[tuple[str, str, date]] = []
 
     def month(y: int, m: int) -> tuple[int, int]:

@@ -144,6 +144,13 @@ fun HomeHub(app: AppState, me: Me) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Anylo.colors.text3)
             }
         }
+        listOf("AI manager" to "ai.use", "WhatsApp bills & reminders" to "shop.settings").filter { app.can(it.second) }.forEach { (label, _) ->
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Anylo.colors.surface).padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(label, Modifier.weight(1f), fontWeight = FontWeight.Medium, color = Anylo.colors.text3)
+                Pill("Coming soon")
+            }
+        }
         if (me.shops.size > 1) me.shops.filter { it.id != me.activeShopId }.forEach { s ->
             SecondaryButton("Switch to ${s.name}", { scope.launch { app.switchShop(s.id) } }, Modifier.fillMaxWidth())
         }

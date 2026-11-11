@@ -6,6 +6,7 @@ import { BusinessForm, LogoAndUpiForm, TaxForm } from "./forms";
 import { PrinterPanel } from "@/features/printer/PrinterPanel";
 import { SecurityPanel } from "./SecurityPanel";
 import { StaffPanel } from "./StaffPanel";
+import { ComingSoon } from "./ComingSoon";
 
 function ShopSettings({ section }: { section: "business" | "tax" }) {
   const { data: shop, isLoading } = useShop();
@@ -22,6 +23,8 @@ export function SettingsPage() {
     ...(can("staff.salespeople") ? [{ to: "staff", label: "Staff" }] : []),
     { to: "printing", label: "Printing" },
     { to: "security", label: "Security" },
+    ...(can("ai.use") ? [{ to: "ai", label: "AI manager" }] : []),
+    ...(can("shop.settings") ? [{ to: "whatsapp", label: "WhatsApp" }] : []),
   ];
   return (
     <>
@@ -42,6 +45,8 @@ export function SettingsPage() {
         <Route path="staff" element={<StaffPanel />} />
         <Route path="printing" element={<PrinterPanel />} />
         <Route path="security" element={<SecurityPanel />} />
+        <Route path="ai" element={<ComingSoon feature="ai" />} />
+        <Route path="whatsapp" element={<ComingSoon feature="whatsapp" />} />
       </Routes>
     </>
   );
