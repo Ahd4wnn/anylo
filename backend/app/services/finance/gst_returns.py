@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Actor
 from app.errors import AppError
+from app.schemas.money import q2
 from app.services.finance.metrics import ZERO, bounds
 from app.services.gst.india import STATES
 from app.services.sales import ShopCtx, _q, shop_ctx
@@ -218,8 +219,29 @@ def gstr3b(db: Session, actor: Actor, period: str) -> dict[str, Any]:
         .one()
         ._mapping
     )
+    # Expenses: GST paid on a supplier bill (intra-state, split CGST/SGST), and reverse charge the shop pays itself.
+    e = _q(
+        db,
+        "SELECT coalesce(sum(gst_amount) FILTER (WHERE itc_eligible AND NOT reverse_charge), 0) AS itc,"
+        " coalesce(sum(round(amount * rcm_rate / 100, 2)) FILTER (WHERE reverse_charge), 0) AS rcm"
+        " FROM expenses WHERE shop_id = :s AND deleted_at IS NULL AND occurred_on BETWEEN :d1 AND :d2",
+        s=ctx.id,
+        d1=start,
+        d2=end,
+    ).one()
+    rcm_half = q2(e.rcm / 2)
+    rcm = {"taxable": ZERO, "igst": ZERO, "cgst": rcm_half, "sgst": e.rcm - rcm_half, "cess": ZERO}
+    eh = q2(e.itc / 2)
+    # RCM tax paid in cash is claimable as ITC the same month (regular shops).
+    claim_rcm = ctx.scheme == "regular"
+    itc = {
+        "igst": itc["igst"],
+        "cgst": itc["cgst"] + eh + (rcm["cgst"] if claim_rcm else ZERO),
+        "sgst": itc["sgst"] + (e.itc - eh) + (rcm["sgst"] if claim_rcm else ZERO),
+        "cess": itc["cess"],
+    }
     # ponytail: shown per tax head without the IGST/CGST/SGST cross set-off order; the portal applies that when filing.
-    payable = {k: outward[k] - itc[k] for k in ("igst", "cgst", "sgst", "cess")}
+    payable = {k: outward[k] + rcm[k] - itc[k] for k in ("igst", "cgst", "sgst", "cess")}
     return {
         "period": period,
         "gstin": g1["gstin"],
@@ -227,7 +249,8 @@ def gstr3b(db: Session, actor: Actor, period: str) -> dict[str, Any]:
         "outward_taxable": outward,  # 3.1(a)
         "nil_exempt": sum(g1["nil"].values(), ZERO),  # 3.1(c)
         "inter_state_unregistered": [{"pos": k} | v for k, v in sorted(unreg.items())],  # 3.2
-        "itc": itc,  # 4(A)(5)
+        "inward_rcm": rcm,  # 3.1(d)
+        "itc": itc,  # 4(A)(3) + 4(A)(5)
         "payable": payable,
         "itc_note": "Estimate from purchases you entered. Check it against GSTR-2B before filing.",
     }
@@ -245,8 +268,12 @@ def cmp08(db: Session, actor: Actor, start: date, end: date) -> dict[str, Any]:
     a, b = bounds(ctx, start, end)
     turnover = _q(
         db,
-        "SELECT (SELECT coalesce(sum(grand_total), 0) FROM invoices WHERE shop_id = :s AND status = 'issued' AND issued_at >= :a AND issued_at < :b)"
-        " - (SELECT coalesce(sum(grand_total), 0) FROM credit_notes WHERE shop_id = :s AND issued_at >= :a AND issued_at < :b)",
+        # Composition tax is on taxable turnover only; exempt / nil / non-GST lines stay out.
+        "SELECT (SELECT coalesce(sum(l.line_total), 0) FROM invoice_lines l JOIN invoices i ON i.id = l.invoice_id"
+        "  WHERE i.shop_id = :s AND i.status = 'issued' AND i.issued_at >= :a AND i.issued_at < :b AND l.rate_kind = 'taxable')"
+        " - (SELECT coalesce(sum(cl.line_total), 0) FROM credit_note_lines cl JOIN credit_notes c ON c.id = cl.credit_note_id"
+        "  JOIN invoice_lines l ON l.id = cl.invoice_line_id"
+        "  WHERE c.shop_id = :s AND c.issued_at >= :a AND c.issued_at < :b AND l.rate_kind = 'taxable')",
         s=ctx.id,
         a=a,
         b=b,

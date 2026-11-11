@@ -155,7 +155,7 @@ def me(actor: CurrentActor, db: DB) -> MeOut:
         user=UserOut(**u._asdict()),
         onboarding_completed=onboarded,
         shops=[ShopBrief(id=s.id, name=s.name) for s in shops]
-        if actor.role in ("owner", "manager", "salesperson")
+        if actor.role in ("owner", "manager", "salesperson", "accountant")
         else [],
         active_shop_id=actor.shop_id,
         subscription=sub,

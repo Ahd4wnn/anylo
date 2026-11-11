@@ -105,7 +105,7 @@ class NewShopIn(BaseModel):
         return v
 
 
-StaffRole = Literal["manager", "salesperson"]
+StaffRole = Literal["manager", "salesperson", "accountant"]
 
 
 class StaffIn(BaseModel):

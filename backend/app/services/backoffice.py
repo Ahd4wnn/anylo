@@ -14,6 +14,7 @@ from app.database import Actor
 from app.errors import AppError
 from app.schemas.backoffice import BorrowingIn, CloseIn, ExpenseIn, RepayIn
 from app.services import audit
+from app.services.books import ensure_open
 from app.services.sales import ShopCtx, _q, _today, shop_ctx
 from app.services.shop import shop_id_of
 
@@ -177,7 +178,8 @@ def list_expenses(
         p["c"] = category_id
     rows = _q(
         db,
-        "SELECT id, category_id, category_name, amount, method, gst_amount, note, occurred_on, created_by_name, created_at"
+        "SELECT id, category_id, category_name, amount, method, gst_amount, note, occurred_on, created_by_name, created_at,"
+        " supplier_name, supplier_gstin, bill_no, itc_eligible, reverse_charge, rcm_rate"
         f" FROM expenses WHERE {where} ORDER BY occurred_on DESC, created_at DESC",
         **p,
     ).mappings()
@@ -196,16 +198,38 @@ def list_expenses(
     }
 
 
+def _gst_fields(ctx: ShopCtx, data: ExpenseIn) -> dict[str, Any]:
+    if data.reverse_charge and data.rcm_rate is None:
+        raise AppError("expense.rcm_rate", "Choose the GST rate for reverse charge.", 422)
+    itc = data.itc_eligible
+    if itc is None:
+        itc = ctx.scheme == "regular" and bool(data.gst_amount)
+    # Composition shops can't take ITC; reverse charge is still payable by them.
+    itc = itc and ctx.scheme == "regular"
+    return {
+        "sn": data.supplier_name,
+        "sg": data.supplier_gstin,
+        "bn": data.bill_no,
+        "itc": itc,
+        "rc": data.reverse_charge,
+        "rr": data.rcm_rate if data.reverse_charge else None,
+    }
+
+
 def create_expense(db: Session, actor: Actor, data: ExpenseIn) -> dict[str, Any]:
     ctx = shop_ctx(db, actor)
     day = data.occurred_on or _today(ctx)
     if day > _today(ctx):
         raise AppError("expense.future", "An expense can't be dated in the future.", 422)
+    ensure_open(db, ctx.id, day)
     cat_id, cat_name = _category(db, actor, data)
     eid: UUID = _q(
         db,
         "INSERT INTO expenses (shop_id, category_id, category_name, amount, method, gst_amount, note, occurred_on, created_by,"
-        " created_by_name) VALUES (:s, :c, :cn, :a, :m, :g, :n, :d, :u, (SELECT full_name FROM users WHERE id = :u)) RETURNING id",
+        " created_by_name, supplier_name, supplier_gstin, bill_no, itc_eligible, reverse_charge, rcm_rate)"
+        " VALUES (:s, :c, :cn, :a, :m, :g, :n, :d, :u, (SELECT full_name FROM users WHERE id = :u), :sn, :sg, :bn, :itc, :rc, :rr)"
+        " RETURNING id",
+        **_gst_fields(ctx, data),
         s=ctx.id,
         c=cat_id,
         cn=cat_name,
@@ -254,11 +278,14 @@ def update_expense(db: Session, actor: Actor, eid: UUID, data: ExpenseIn) -> dic
     if not before:
         raise AppError("expense.not_found", "This expense was not found.", 404)
     day = data.occurred_on or before.occurred_on
+    ensure_open(db, ctx.id, min(day, before.occurred_on))
     cat_id, cat_name = _category(db, actor, data)
     _q(
         db,
         "UPDATE expenses SET category_id = :c, category_name = :cn, amount = :a, method = :m, gst_amount = :g, note = :n,"
-        " occurred_on = :d WHERE id = :i",
+        " occurred_on = :d, supplier_name = :sn, supplier_gstin = :sg, bill_no = :bn, itc_eligible = :itc,"
+        " reverse_charge = :rc, rcm_rate = :rr WHERE id = :i",
+        **_gst_fields(ctx, data),
         c=cat_id,
         cn=cat_name,
         a=data.amount,
@@ -295,12 +322,13 @@ def update_expense(db: Session, actor: Actor, eid: UUID, data: ExpenseIn) -> dic
 def delete_expense(db: Session, actor: Actor, eid: UUID) -> None:
     r = _q(
         db,
-        "UPDATE expenses SET deleted_at = now() WHERE id = :i AND shop_id = :s AND deleted_at IS NULL RETURNING amount, category_name",
+        "UPDATE expenses SET deleted_at = now() WHERE id = :i AND shop_id = :s AND deleted_at IS NULL RETURNING amount, category_name, occurred_on",
         i=eid,
         s=shop_id_of(actor),
     ).first()
     if not r:
         raise AppError("expense.not_found", "This expense was not found.", 404)
+    ensure_open(db, shop_id_of(actor), r.occurred_on)
     _reverse(db, "expense", eid)
     audit.record(
         db,
@@ -407,6 +435,18 @@ def repay(db: Session, actor: Actor, bid: UUID, data: RepayIn) -> dict[str, Any]
     )
     if data.amount == b["outstanding"]:
         _q(db, "UPDATE borrowings SET status = 'closed' WHERE id = :i", i=bid)
+    if data.interest:
+        # Interest is a cost in the P&L; only the principal reduces the loan.
+        create_expense(
+            db,
+            actor,
+            ExpenseIn(
+                category_name="Loan interest",
+                amount=data.interest,
+                method=data.method,
+                note=f"Interest to {b['lender_name']}",
+            ),
+        )
     audit.record(db, actor, "borrowing", bid, "repay", None, {"amount": str(data.amount)})
     return _borrowing(db, actor, bid)
 

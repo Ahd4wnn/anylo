@@ -50,7 +50,7 @@ def delete(customer_id: UUID, actor: CurrentActor, db: DB) -> None:
     customers.delete(db, actor, customer_id)
 
 
-@router.get("/customers/{customer_id}/ledger", dependencies=MANAGE)
+@router.get("/customers/{customer_id}/ledger", dependencies=[Depends(require("customer.ledger"))])
 def ledger(customer_id: UUID, actor: CurrentActor, db: DB) -> Any:
     return customers.ledger(db, actor, customer_id)
 

@@ -12,6 +12,7 @@ from app.errors import AppError
 from app.schemas.backoffice import AttendanceIn, LabourPayIn, WorkerIn
 from app.services import audit
 from app.services.backoffice import _at, _pay, _reverse
+from app.services.books import ensure_open
 from app.services.labour_wages import (
     STATUS_DAYS,
     STATUS_LEAVES,
@@ -253,6 +254,7 @@ def pay(db: Session, actor: Actor, data: LabourPayIn) -> dict[str, Any]:
     if total <= 0:
         raise AppError("labour.zero", "Enter the amount paid.", 422)
     day = data.paid_on or _today(ctx)
+    ensure_open(db, ctx.id, day)
     if day > _today(ctx):
         raise AppError("labour.future", "A payment can't be dated in the future.", 422)
     pid: UUID = _q(
@@ -325,12 +327,13 @@ def payments(
 def delete_payment(db: Session, actor: Actor, pid: UUID) -> None:
     r = _q(
         db,
-        "UPDATE labour_payments SET deleted_at = now() WHERE id = :i AND shop_id = :s AND deleted_at IS NULL RETURNING amount, labourer_id",
+        "UPDATE labour_payments SET deleted_at = now() WHERE id = :i AND shop_id = :s AND deleted_at IS NULL RETURNING amount, labourer_id, paid_on",
         i=pid,
         s=shop_id_of(actor),
     ).first()
     if not r:
         raise AppError("labour.payment_not_found", "This payment was not found.", 404)
+    ensure_open(db, shop_id_of(actor), r.paid_on)
     _reverse(db, "labour_payment", pid)
     audit.record(db, actor, "labour_payment", pid, "delete", {"amount": str(r.amount)}, None)
 

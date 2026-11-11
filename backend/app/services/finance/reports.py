@@ -330,12 +330,11 @@ def pnl(db: Session, actor: Actor, start: date, end: date) -> dict[str, Any]:
         r.category_name: r.amount
         for r in _q(
             db,
-            "SELECT category_name, sum(amount - CASE WHEN :reg THEN coalesce(gst_amount, 0) ELSE 0 END) AS amount FROM expenses"
+            "SELECT category_name, sum(amount - CASE WHEN itc_eligible THEN coalesce(gst_amount, 0) ELSE 0 END) AS amount FROM expenses"
             " WHERE shop_id = :s AND deleted_at IS NULL AND occurred_on BETWEEN :a AND :b GROUP BY 1 ORDER BY 2 DESC",
             s=ctx.id,
             a=start,
             b=end,
-            reg=ctx.scheme == "regular",
         )
     }
     return {
@@ -353,6 +352,10 @@ def _flow_label(r: Any) -> str:
     if r.direction == "in":
         if r.applies_to_type == "borrowing":
             return "Money borrowed"
+        if r.applies_to_type == "capital":
+            return "Capital introduced"
+        if r.applies_to_type == "asset":
+            return "Assets sold"
         if r.party_type == "customer":
             return "Due collections" if r.collected else "Sales"
         return "Other money in"
@@ -361,6 +364,9 @@ def _flow_label(r: Any) -> str:
         "labour_payment": "Wages",
         "borrowing": "Loan repayments",
         "credit_note": "Refunds to customers",
+        "drawing": "Owner drawings",
+        "tax": "Tax paid",
+        "asset": "Assets bought",
     }.get(
         r.applies_to_type, "Supplier payments" if r.party_type == "supplier" else "Other money out"
     )

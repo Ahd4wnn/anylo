@@ -22,7 +22,7 @@ known-third-party = ["alembic"]
 "app/services/shop.py" = ["E501", "S608"]  # column list constant interpolated into SQL
 "app/services/catalogue*.py" = ["E501", "S608"]
 # WHERE clauses / column lists assembled from in-code constants; values are always bound parameters.
-"app/services/{customers,backoffice,labour,returns,purchasing}.py" = ["E501", "S608"]
+"app/services/{customers,backoffice,labour,returns,purchasing,books}.py" = ["E501", "S608"]
 "app/services/finance/*.py" = ["E501", "S608"]
 "app/routers/*.py" = ["E501"]
 "app/schemas/*.py" = ["E501"]

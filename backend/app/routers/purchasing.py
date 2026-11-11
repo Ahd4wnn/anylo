@@ -16,10 +16,11 @@ from app.services import purchasing as svc
 
 router = APIRouter(prefix="/v1", tags=["purchases"])
 BUY = [Depends(require("purchase.manage"))]
+READ = [Depends(require("books.view"))]
 STOCK = [Depends(require("stock.manage"))]
 
 
-@router.get("/suppliers", dependencies=BUY)
+@router.get("/suppliers", dependencies=READ)
 def list_suppliers(actor: CurrentActor, db: DB, q: str | None = None) -> Any:
     return svc.list_suppliers(db, actor, q)
 
@@ -39,7 +40,7 @@ def delete_supplier(supplier_id: UUID, actor: CurrentActor, db: DB) -> None:
     svc.delete_supplier(db, actor, supplier_id)
 
 
-@router.get("/suppliers/{supplier_id}/ledger", dependencies=BUY)
+@router.get("/suppliers/{supplier_id}/ledger", dependencies=READ)
 def supplier_ledger(supplier_id: UUID, actor: CurrentActor, db: DB) -> Any:
     return svc.supplier_ledger(db, actor, supplier_id)
 
@@ -49,7 +50,7 @@ def pay_supplier(supplier_id: UUID, data: SupplierPayIn, actor: CurrentActor, db
     return svc.pay_supplier(db, actor, supplier_id, data)
 
 
-@router.get("/purchases", dependencies=BUY)
+@router.get("/purchases", dependencies=READ)
 def list_purchases(
     actor: CurrentActor,
     db: DB,
@@ -84,7 +85,7 @@ def create_purchase(
     return body
 
 
-@router.get("/purchases/{purchase_id}", dependencies=BUY)
+@router.get("/purchases/{purchase_id}", dependencies=READ)
 def get_purchase(purchase_id: UUID, actor: CurrentActor, db: DB) -> Any:
     return svc.get(db, actor, purchase_id)
 

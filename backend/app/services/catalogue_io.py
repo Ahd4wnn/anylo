@@ -50,9 +50,8 @@ def _q(db: Session, sql: str, **p: Any) -> Any:
 # --- reading files ---
 
 
-def read_sheet(data: bytes, filename: str) -> list[dict[str, str]]:
-    if len(data) > MAX_FILE:
-        raise AppError("import.too_large", "The file is too big. Keep it under 10 MB.", 413)
+def sheet_rows(data: bytes, filename: str) -> list[list[str]]:
+    """Every row of a CSV or the first Excel sheet, as text."""
     try:
         if filename.lower().endswith((".xlsx", ".xlsm")):
             wb = load_workbook(
@@ -70,6 +69,13 @@ def read_sheet(data: bytes, filename: str) -> list[dict[str, str]]:
         raise AppError("import.unreadable", "Upload a CSV or Excel (.xlsx) file.", 415) from None
     if not rows:
         raise AppError("import.empty", "The file is empty.", 400)
+    return rows
+
+
+def read_sheet(data: bytes, filename: str) -> list[dict[str, str]]:
+    if len(data) > MAX_FILE:
+        raise AppError("import.too_large", "The file is too big. Keep it under 10 MB.", 413)
+    rows = sheet_rows(data, filename)
     header = [h.lower().replace(" ", "_") for h in rows[0]]
     if "name" not in header or "sale_price" not in header:
         raise AppError(

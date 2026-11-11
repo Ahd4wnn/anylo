@@ -95,6 +95,7 @@ class Resolved:
     cost: Decimal
     line_discount: Decimal
     track_stock: bool
+    kind: str = "taxable"
 
 
 def _resolve(db: Session, actor: Actor, ctx: ShopCtx, cart: CartIn) -> list[Resolved]:
@@ -108,7 +109,7 @@ def _resolve(db: Session, actor: Actor, ctx: ShopCtx, cart: CartIn) -> list[Reso
                 db,
                 """
         SELECT v.id, v.name AS vname, v.sale_price, v.mrp, v.cost_price, v.is_active, p.name, p.hsn_code, p.unit_code,
-          p.price_includes_tax, p.cess_rate, p.track_stock, p.deleted_at, r.rate
+          p.price_includes_tax, p.cess_rate, p.track_stock, p.deleted_at, r.rate, r.kind
         FROM product_variants v JOIN products p ON p.id = v.product_id LEFT JOIN gst_rates r ON r.id = p.tax_rate_id
         WHERE v.id = ANY(:ids) AND v.shop_id = :s""",
                 ids=ids,
@@ -158,18 +159,22 @@ def _resolve(db: Session, actor: Actor, ctx: ShopCtx, cart: CartIn) -> list[Reso
                     v.cost_price,
                     ln.line_discount,
                     v.track_stock,
+                    v.kind or "taxable",
                 )
             )
         else:
             c = ln.custom
             assert c is not None and ln.unit_price is not None
-            rate = ZERO
+            rate, kind = ZERO, "taxable"
             if c.tax_rate_id:
-                rate = _q(
-                    db, "SELECT rate FROM gst_rates WHERE id = :r AND is_active", r=c.tax_rate_id
-                ).scalar()
-                if rate is None:
+                got = _q(
+                    db,
+                    "SELECT rate, kind FROM gst_rates WHERE id = :r AND is_active",
+                    r=c.tax_rate_id,
+                ).first()
+                if got is None:
                     raise AppError("invoice.bad_rate", "Choose a current GST rate.", 422)
+                rate, kind = got.rate, got.kind
             elif ctx.scheme == "regular":
                 raise AppError("invoice.missing_rate", f"Choose a GST rate for {c.name}.", 422)
             out.append(
@@ -189,6 +194,7 @@ def _resolve(db: Session, actor: Actor, ctx: ShopCtx, cart: CartIn) -> list[Reso
                     ZERO,
                     ln.line_discount,
                     False,
+                    kind,
                 )
             )
     return out
@@ -354,8 +360,8 @@ def _write_lines_stock(
             db,
             """INSERT INTO invoice_lines (shop_id, invoice_id, line_no, variant_id, name, variant_name, hsn_code, unit_code,
                   qty, unit_price, price_includes_tax, gross, line_discount, invoice_discount_share, taxable, tax_rate, cess_rate,
-                  cgst, sgst, igst, cess, line_total, cost_price)
-                  VALUES (:s, :inv, :no, :v, :n, :vn, :h, :u, :q, :up, :inc, :g, :ld, :ids, :t, :rate, :cr, :c, :sg, :ig, :ce, :lt, :cost)""",
+                  cgst, sgst, igst, cess, line_total, cost_price, rate_kind)
+                  VALUES (:s, :inv, :no, :v, :n, :vn, :h, :u, :q, :up, :inc, :g, :ld, :ids, :t, :rate, :cr, :c, :sg, :ig, :ce, :lt, :cost, :rk)""",
             s=ctx.id,
             inv=invoice_id,
             no=i,
@@ -379,6 +385,7 @@ def _write_lines_stock(
             ce=x.cess,
             lt=x.total,
             cost=r.cost,
+            rk=r.kind,
         )
         if r.track_stock and r.variant_id:
             if not allow_negative:

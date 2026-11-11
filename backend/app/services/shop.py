@@ -171,8 +171,12 @@ def create_shop(db: Session, owner_id: UUID, data: NewShopIn) -> UUID:
 
 
 def _need_role_permission(actor: Actor, role: str) -> None:
-    if role == "manager" and not allowed("staff.managers", actor.role):
-        raise AppError("staff.managers_owner_only", "Only the owner can manage managers.", 403)
+    if role in ("manager", "accountant") and not allowed("staff.managers", actor.role):
+        raise AppError(
+            "staff.managers_owner_only",
+            "Only the owner can manage managers and the accountant.",
+            403,
+        )
 
 
 def _staff(db: Session, actor: Actor, user_id: UUID) -> Any:

@@ -92,6 +92,12 @@ class ExpenseIn(BaseModel):
     gst_amount: Money | None = Field(default=None, ge=0)
     note: str | None = Field(default=None, max_length=300)
     occurred_on: date | None = None
+    supplier_name: str | None = Field(default=None, max_length=120)
+    supplier_gstin: str | None = Field(default=None, pattern=r"^[0-9A-Z]{15}$")
+    bill_no: str | None = Field(default=None, max_length=40)
+    itc_eligible: bool | None = None  # None: claim it when a regular shop paid GST
+    reverse_charge: bool = False
+    rcm_rate: Decimal | None = Field(default=None, ge=0, le=40)
 
 
 class WorkerIn(BaseModel):
@@ -137,7 +143,8 @@ class BorrowingIn(BaseModel):
 
 
 class RepayIn(BaseModel):
-    amount: Money = Field(gt=0)
+    amount: Money = Field(gt=0)  # principal
+    interest: Money = Field(default=Decimal("0"), ge=0)
     method: Literal["cash", "upi", "bank", "cheque"] = "cash"
     note: str | None = Field(default=None, max_length=200)
 

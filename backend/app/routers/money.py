@@ -43,7 +43,7 @@ def delete_expense_category(category_id: UUID, actor: CurrentActor, db: DB) -> N
     backoffice.delete_category(db, actor, category_id)
 
 
-@router.get("/expenses", dependencies=need("expense.create"))
+@router.get("/expenses", dependencies=need("expense.view"))
 def list_expenses(
     actor: CurrentActor,
     db: DB,
@@ -105,7 +105,7 @@ def mark(data: AttendanceIn, actor: CurrentActor, db: DB) -> Any:
     return labour.mark(db, actor, data)
 
 
-@router.get("/labour/payments", dependencies=need("labour.manage"))
+@router.get("/labour/payments", dependencies=need("books.view"))
 def labour_payments(
     actor: CurrentActor,
     db: DB,
@@ -127,7 +127,7 @@ def delete_labour_payment(payment_id: UUID, actor: CurrentActor, db: DB) -> None
 
 
 # borrowings
-@router.get("/borrowings", dependencies=need("borrowing.manage"))
+@router.get("/borrowings", dependencies=need("books.view"))
 def list_borrowings(actor: CurrentActor, db: DB) -> Any:
     return backoffice.list_borrowings(db, actor)
 

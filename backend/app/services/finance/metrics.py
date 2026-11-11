@@ -78,12 +78,11 @@ def compute(
     if user_id:
         expenses = labour = ZERO
     else:
-        # GST on an expense is claimable for regular shops, so it isn't a cost there.
+        # GST claimed as ITC isn't a cost.
         expenses = _q(
             db,
-            "SELECT coalesce(sum(amount - CASE WHEN :reg THEN coalesce(gst_amount, 0) ELSE 0 END), 0) FROM expenses"
+            "SELECT coalesce(sum(amount - CASE WHEN itc_eligible THEN coalesce(gst_amount, 0) ELSE 0 END), 0) FROM expenses"
             " WHERE shop_id = :s AND deleted_at IS NULL AND occurred_on BETWEEN :d1 AND :d2",
-            reg=ctx.scheme == "regular",
             **p,
         ).scalar()
         # ponytail: wages on cash basis (what was paid), as the spec's default; accrual needs the wage engine per day.

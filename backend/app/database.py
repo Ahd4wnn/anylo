@@ -19,7 +19,7 @@ _engine = create_engine(
 )
 SessionLocal = sessionmaker(_engine, expire_on_commit=False)
 
-RLS_ROLES = {"admin", "support", "owner", "manager", "salesperson", "system"}
+RLS_ROLES = {"admin", "support", "owner", "manager", "salesperson", "accountant", "system"}
 
 
 @dataclass(frozen=True)
